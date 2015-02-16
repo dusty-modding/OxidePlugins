@@ -1,0 +1,12 @@
+-Fixed /show
+-Added /secret - hides users Admin tag
+-Added /secretall - hides all admin tags
+-Added /display - turns the message on player login "Your title is: " off and on
+-Added /title - can be used to tell you your title
+-Added more checks that make sense to fongiure data for quicker access
+-Added new settings that can be changed in config or via commands
+-Fixed some more bugs caused by setting titles incorrectly
+-Fixed (once again) the rare occasion of titles being saved with players as their "RealName" in Data
+-Fixed Changing command users name to random players name
+-Fixed Scoping issue for some code
+-Made some more progress towards Groups integration (still not 100% yet)
