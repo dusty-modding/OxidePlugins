@@ -10,3 +10,5 @@
 -Fixed Changing command users name to random players name
 -Fixed Scoping issue for some code
 -Made some more progress towards Groups integration (still not 100% yet)
+WARNING: This release is NOT Tested yet. Use at your OWN RISK I have to fix my computer first. Please use the stable 
+release found on oxides website. Thank you.
