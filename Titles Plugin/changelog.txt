@@ -1,3 +1,7 @@
+v0.1.2
+=========================================
+WARNING: This release is NOT Tested yet. Use at your OWN RISK I have to fix my computer first. Please use the stable 
+release found on oxides website. Thank you.
 -Fixed /show
 -Added /secret - hides users Admin tag
 -Added /secretall - hides all admin tags
@@ -10,5 +14,16 @@
 -Fixed Changing command users name to random players name
 -Fixed Scoping issue for some code
 -Made some more progress towards Groups integration (still not 100% yet)
+
+v0.1.3
+==============================================
 WARNING: This release is NOT Tested yet. Use at your OWN RISK I have to fix my computer first. Please use the stable 
 release found on oxides website. Thank you.
+
+-Added Full Groups Integration support (Thanks to the help from TheRotAG)
+-Added better data management 
+-Added better data checks
+-Re-Wrote the setTitles function
+-Added better Auth Level checks
+-Integrated better organization
+-Formatting fixes
