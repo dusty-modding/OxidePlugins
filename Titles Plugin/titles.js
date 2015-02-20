@@ -139,7 +139,7 @@ var titles = {
         TitlesData = data.GetData('Titles');
         TitlesData = TitlesData || {};
         TitlesData.PlayerData = TitlesData.PlayerData || {};
-        GroupData = datafile.GetData("Groups");
+        GroupData = data.GetData("Groups");
         GroupData = GroupData || {};
     },
 
