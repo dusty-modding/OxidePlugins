@@ -74,7 +74,7 @@ var rules = {
         var rules = this.Config.setRules;
         var tempSave = [];
         if (authLvl >= 2 && args.length < 2) {
-            for (var j = 0; j < this.Config.Messages.AddBadSyntax.length; j++) {
+            for (var j = 0; j < this.Config.Messages.DelBadSyntax.length; j++) {
                 rust.SendChatMessage(player, "RULES", this.Config.Messages.DelBadSyntax[j], "0");
                 return;
             } else if (authLvl >= 2 && args.length >= 2) {
