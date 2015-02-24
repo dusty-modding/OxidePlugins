@@ -73,26 +73,31 @@ var rules = {
         var authLvl = player.net.connection.authLevel;
         var rules = this.Config.setRules;
         var tempSave = [];
-        if (authLvl >= 2) {
-            for (var i = 0; i < rules.length; i++) {
-                try {
-                    if (rules.indexOf(i) != args[1]) {
-                        tempSave.push(rules[i]);
-                    } else {
-                        continue;
+        if (authLvl >= 2 && args.length < 2) {
+            for (var j = 0; j < this.Config.Messages.AddBadSyntax.length; j++) {
+                rust.SendChatMessage(player, "RULES", this.Config.Messages.DelBadSyntax[j], "0");
+                return;
+            } else if (authLvl >= 2 && args.length >= 2) {
+                for (var i = 0; i < rules.length; i++) {
+                    try {
+                        if (rules.indexOf(i) != args[1]) {
+                            tempSave.push(rules[i]);
+                        } else {
+                            continue;
+                        }
+                    } catch (e) {
+                        print(e.message.toString());
                     }
-                } catch (e) {
-                    print(e.message.toString());
                 }
+                this.Config.Clear();
+                for (var ii = 0; ii < tempSave.length; ii++) {
+                    this.Config.setRules.push(tempSave[ii]);
+                }
+                this.SaveConfig();
+                return;
+            } else {
+                rust.SendChatMessage(player, "RULES", "No Permissions to use this command.", "0");
             }
-            this.Config.Clear();
-            for (var j = 0; j < tempSave.length; j++) {
-                this.Config.setRules.push(tempSave[j]);
-            }
-            this.SaveConfig();
-            return;
-        } else {
-            rust.SendChatMessage(player, "RULES", "No Permissions to use this command.", "0");
         }
     },
 
