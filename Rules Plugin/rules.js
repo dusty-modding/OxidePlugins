@@ -60,7 +60,7 @@ var rules = {
         } else {
 
             if (authLvl >= 2 && args[1].length) {
-                rules.Add(rulLen + "." + " " + args[1]);
+                rules.push(rulLen + "." + " " + args[1]);
                 rust.SendChatMessage(player, "RULES", "Rule added successfully.", "0")
                 this.SaveConfig();
             } else if (authLvl <= 1) {
