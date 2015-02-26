@@ -1,24 +1,28 @@
-var RanksandTitles = {
-    Title: "Ranks and Titles",
+var RanksAndTitles = {
+    Title: "Ranks And Titles",
     Author: "Killparadise",
-    Version: V(0, 1, 0),
+    Version: V(1, 0, 0),
+    ResourceId: 6874,
     HasConfig: true,
     Init: function() {
         GroupsAPI = plugins.Find('RotAG-Groups');
         if (GroupsAPI) {
             GroupsAPI = true;
+            print('Groups Found. Loading...')
         } else {
             GroupsAPI = false;
         }
         this.loadTitleData();
+        this.buildSetupData();
+        command.AddChatCommand("dedata", this.Plugin, "cmddebugdata");
     },
+
     OnServerInitialized: function() {
         print(this.Title + " Is now loading, please wait...");
-        command.AddChatCommand("show", this.Plugin, "cmdShowPlayer");
-        command.AddChatCommand("secret", this.Plugin, "cmdSecret");
-        command.AddChatCommand("secretall", this.Plugin, "cmdSecretAll");
-        command.AddChatCommand("display", this.Plugin, "cmdDistplay");
-        command.AddChatCommand("title", this.Plugin, "cmdTitle");
+        command.AddChatCommand("setup", this.Plugin, "cmdStartSetup");
+        if (TitlesData.SetupData.Type && TitlesData.SetupData.Type != "") {
+            this.startPlugin();
+        }
     },
 
     LoadDefaultConfig: function() {
@@ -26,209 +30,59 @@ var RanksandTitles = {
         this.Config.Settings = {
             "showPlayer": true,
             "displayLvl": true,
-            "hideAllAdmins": false
+            "hideAllAdmins": false,
+            "automated": false
         };
-        this.Config.Info = [{
+        this.Config.Titles = [{
             "authLvl": 0,
-            "title": "Player"
+            "title": "Player",
+            "Exclude": false
+        }, {
+            "authLvl": 0,
+            "title": "Donor",
+            "Exclude": true
         }, {
             "authLvl": 1,
-            "title": "Mod"
+            "title": "Mod",
+            "Exclude": true
         }, {
             "authLvl": 2,
-            "title": "Admin"
+            "title": "Admin",
+            "Exclude": true
+        }, {
+            "authLvl": 2,
+            "title": "Owner",
+            "Exclude": true
         }];
-    },
-
-    /*-----------------------------------------------------------------
-                     Commands for Titles
-    ------------------------------------------------------------------*/
-    cmdShowPlayer: function(player, cmd, args) {
-        if (authLevel >= this.Config.authLevel) {
-            if (!showPlayer) {
-                for (var key in TitlesData.PlayerData) {
-                    if (TitlesData.PlayerData.hasOwnProperty(key) && TitlesData.PlayerData[key] === 'Title' && TitlesData.PlayerData[key].Title === this.Config.Info[0].title) {
-                        showPlayer = true;
-                        player.displayName = TitlesData.PlayerData[key].RealName + " " + "[" + this.Config.Info[0].title + "]";
-                        rust.SendChatMessage(player, "TITLES", "Successfully turned on titles for Players", "0");
-                    } else {
-                        showPlayer = false;
-                        player.displayName = TitlesData.PlayerData[key].RealName;
-                        rust.SendChatMessage(player, "TITLES", "Successfully turned off titles for Players", "0");
-                    }
-                }
-            }
-        } else {
-            rust.SendChatMessage(player, "TITLES", "You do not have permission to use this command!", "0");
-        }
-    },
-
-    cmdTitle: function(player, cmd, args) {
-        var steamID = rust.UserIDFromPlayer(player);
-        var tempTitle = TitlesData.PlayerData[steamID].Title;
-        rust.SendChatMessage(player, "TITLES", "Your title is: " + tempTitle, "0");
-    },
-
-    cmdSecret: function(player, cmd, args) {
-        var steamID = rust.UserIDFromPlayer(player);
-        var hideAdmin = TitlesData.PlayerData[steamID].hidden;
-        if (authLevel >= this.Config.authLevel && !hideAdmin) {
-            hideAdmin = true;
-            player.displayName = TitlesData.PlayerData[steamID].RealName;
-            this.saveTitleData();
-        } else if (authLevel >= this.Config.authLevel && hideAdmin) {
-            hideAdmin = false;
-            player.displayName = TitlesData.PlayerData[steamID].RealName + " " + "[" + TitlesData.PlayerData[key].Title + "]";
-            this.saveTitleData();
-        } else {
-            rust.SendChatMessage(player, "TITLES", "You do not have permission to use this command!", "0");
-        }
-    },
-
-    cmdSecretAll: function(player, cmd, args) {
-        var hideAllAdmins = this.Config.Settings.hideAllAdmins;
-        if (authLevel >= this.Config.authLevel) {
-            for (var akey in TitlesData.PlayerData) {
-                if (TitlesData.PlayerData.hasOwnProperty(akey) && TitlesData.PlayerData[akey] === 'Title' && TitlesData.PlayerData[akey].Title === this.Config.Titles.Admin) {
-                    if (!hideAllAdmins) {
-                        hideAllAdmins = true;
-                        player.displayName = TitlesData.PlayerData[akey].RealName;
-                        rust.SendChatMessage(player, "TITLES", "All Admins Hidden", "0");
-                    } else {
-                        hideAllAdmins = false;
-                        player.displayName = TitlesData.PlayerData[akey].RealName + " " + "[" + TitlesData.PlayerData[akey].Title + "]";
-                        rust.SendChatMessage(player, "TITLES", "All Admins Revealed", "0");
-                    }
-                } else {
-                    rust.SendChatMessage(player, "TITLES", "No Admins Located on the Server.", "0");
-                    return [];
-                }
-            }
-        } else {
-            rust.SendChatMessage(player, "TITLES", "You do not have permission to use this command!", "0");
-        }
-    },
-
-    cmdDisplay: function(player, cmd, args) {
-        var displayLvl = this.Config.Settings.displayLvl;
-        if (displayLvl) {
-            displayLvl = false;
-        } else {
-            displayLvl = true;
-        }
-    },
-
-    /*-----------------------------------------------------------------
-                    Setup our help text
-    ------------------------------------------------------------------*/
-    SendHelpText: function(player) {
-        if (authLevel >= this.Config.authLevel) {
-            rust.SendChatMessage(player, "TITLES", "/show - Turn on and off the [Player] Tag for Players", "0");
-            rust.SendChatMessage(player, "TITLES", "/secret - Turn on and off the [Admin] Tag for yourself", "0");
-            rust.SendChatMessage(player, "TITLES", "/secretall - Turn on and off the [Admin] Tag for all admins", "0");
-            rust.SendChatMessage(player, "TITLES", "/display - Turn on and off the title login message", "0");
-        }
-        rust.SendChatMessage(player, "TITLES", "/title - Displays your current title", "0");
-    },
-
-    /*-----------------------------------------------------------------
-                    Get all of our Data
-    ------------------------------------------------------------------*/
-    loadTitleData: function() {
-        //Lets get our own data and then check to see if theres a groups data file
-        TitlesData = data.GetData('Titles');
-        TitlesData = TitlesData || {};
-        TitlesData.PlayerData = TitlesData.PlayerData || {};
-        GroupData = data.GetData("Groups");
-        GroupData = GroupData || {};
-    },
-
-
-    checkPlayerData: function(player) {
-        //Okay lets check our data file for player data 
-        authLevel = player.net.connection.authLevel;
-        TitlesData.PlayerData[steamID] = TitlesData.PlayerData[steamID] || {};
-        TitlesData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName || GroupData.PlayerData[steamID].RealName || player.displayName || "";
-        TitlesData.PlayerData[steamID].Title = TitlesData.PlayerData[steamID].Title || "";
-        TitlesData.PlayerData[steamID].authLvl = TitlesData.PlayerData[steamID].authLvl || authLevel || "";
-        TitlesData.PlayerData[steamID].isAdmin = TitlesData.playerData[steamID].isAdmin || (authLevel >= 2) || false;
-        TitlesData.PlayerData[steamID].hidden = TitlesData.playerData[steamID].hidden || false;
-        showPlayer = this.Config.Settings.showPlayer;
-        this.setTitle(player, showPlayer, steamID);
-    },
-
-
-    saveTitleData: function() {
-        //Save our data to our titles data file
-        data.SaveData('Titles');
-    },
-
-    /*-----------------------------------------------------------------
-                    Set Our title for the player
-    ------------------------------------------------------------------*/
-    setTitle: function(player, showPlayer, steamID) {
-        //Get our title and name for our data
-        var authName = TitlesData.PlayerData[steamID].Title;
-        var realName = TitlesData.PlayerData[steamID].RealName;
-        //run the the auth level for the incoming player and set his/her title correctly
-        if (authName !== "") {
-            if (GroupsAPI) {
-                if (checkIfShow(steamID, TitlesData.PlayerData[steamID].authLvl)) {
-                    GroupData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName + " " + "[" + authName + "]";
-                }
-                if (this.Config.Settings.displayLvl) rust.SendChatMessage(player, "Titles", "Your title is: " + authName, "0");
-            } else {
-                if (checkIfShow(steamID, TitlesData.PlayerData[steamID].authLvl)) {
-                    player.displayName = TitlesData.PlayerData[steamID].RealName + " " + "[" + authName + "]";
-                }
-                if (this.Config.Settings.displayLvl) rust.SendChatMessage(player, "Titles", "Your title is: " + authName, "0");
-            }
-        } else if (authName === "" && TitlesData.PlayerData[steamID].authLvl !== "") {
-            if (GroupsAPI) {
-                for (var i = 0; i < this.Config.Info.length; i++) {
-                    if (this.Config.info[i].authLvl === TitlesData.PlayerData[steamID].authLvl) {
-                        if (checkIfShow(steamID, TitlesData.PlayerData[steamID].authLvl)) {
-                            GroupData.PlayerData[steamID].RealName = realName + " " + "[" + this.Config.Info[i].title + "]";
-                        }
-                        TitlesData.PlayerData[steamID].Title = this.Config.Info[i].title;
-                        if (this.Config.Settings.displayLvl) rust.SendChatMessage(player, "Titles", "Your title is: " + this.Config.info[i].title, "0");
-                    }
-                }
-            } else {
-                for (var i = 0; i < this.Config.Info.length; i++) {
-                    if (this.Config.info[i].authLvl === TitlesData.PlayerData[steamID].authLvl) {
-                        if (checkIfShow(steamID, TitlesData.PlayerData[steamID].authLvl)) {
-                            player.displayName = realName + " " + "[" + this.Config.Info[i].title + "]";
-                        }
-                        TitlesData.PlayerData[steamID].Title = this.Config.Info[i].title;
-                        if (this.Config.Settings.displayLvl) rust.SendChatMessage(player, "Titles", "Your title is: " + this.Config.info[i].title, "0");
-                    }
-                }
-            }
-        } else {
-            print("Something went wrong when trying to set Titles: " + authName + " " + authLevel);
-        }
-
-        this.saveTitleData();
-    },
-    /*-----------------------------------------------------------------
-                     Check if we should Show the title
-     ------------------------------------------------------------------*/
-    checkIfShow: function(steamID, authLvl) {
-        //load in our settings from Config
-        var settings = this.Config.Settings;
-        //Check if our current user is an admin
-        var isAdmin = TitlesData.playerData[steamID].isAdmin;
-        //lets check out settings, and our player data and see if we should show the title
-        if (isAdmin && !settings.hideAllAdmins && !TitlesData.playerData[steamID].hidden) {
-            return true;
-        } else if (showPlayer || authLvl === 1) {
-            return true;
-        } else if (isAdmin && TitlesData.playerData[steamID].hidden) {
-            return false;
-        } else {
-            return false;
-        }
+        this.Config.Ranks = [{
+            "rank": 0,
+            "title": "New Guy",
+            "killsNeeded": 0
+        }, {
+            "rank": 1,
+            "title": "Recruit",
+            "killsNeeded": 10
+        }, {
+            "rank": 2,
+            "title": "Soldier",
+            "killsNeeded": 20
+        }, {
+            "rank": 3,
+            "title": "Bandit",
+            "killsNeeded": 25
+        }, {
+            "rank": 4,
+            "title": "Captain",
+            "killsNeeded": 35
+        }, {
+            "rank": 5,
+            "title": "Bandit Lord",
+            "killsNeeded": 50
+        }, {
+            "rank": 6,
+            "title": "Badass",
+            "killsNeeded": 100
+        }];
     },
 
     /*-----------------------------------------------------------------
@@ -237,6 +91,305 @@ var RanksandTitles = {
     OnPlayerInit: function(player) {
         steamID = rust.UserIDFromPlayer(player);
         this.checkPlayerData(player);
+    },
+
+    /*-----------------------------------------------------------------
+                    Get all of our Data
+    ------------------------------------------------------------------*/
+    loadTitleData: function() {
+        //Lets get our own data and then check to see if theres a groups data file
+        TitlesData = data.GetData('RanksandTitles');
+        TitlesData = TitlesData || {};
+        TitlesData.SetupData = TitlesData.SetupData || {};
+        TitlesData.SetupData.Type = TitlesData.SetupData.Type || "";
+        TitlesData.PlayerData = TitlesData.PlayerData || {};
+        GroupData = data.GetData("Groups");
+        GroupData = GroupData || {};
+    },
+
+
+    checkPlayerData: function(player) {
+        //Okay lets check our data file for player data 
+        try{
+        var authLvl = player.net.connection.authLevel;
+        var steamID = rust.UserIDFromPlayer(player);
+        TitlesData.PlayerData[steamID] = TitlesData.PlayerData[steamID] || {};
+        TitlesData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName || player.displayName || "";
+        TitlesData.PlayerData[steamID].Title = TitlesData.PlayerData[steamID].Title || "Player";
+        TitlesData.PlayerData[steamID].Rank = TitlesData.PlayerData[steamID].Rank || "";
+        TitlesData.PlayerData[steamID].Kills = TitlesData.PlayerData[steamID].Kills || 0;
+        TitlesData.PlayerData[steamID].Deaths = TitlesData.PlayerData[steamID].Deaths || 0;
+        TitlesData.PlayerData[steamID].isAdmin = TitlesData.PlayerData[steamID].isAdmin || (authLvl >= 2) || false;
+        TitlesData.PlayerData[steamID].hidden = TitlesData.PlayerData[steamID].hidden || false;
+        showPlayer = this.Config.Settings.showPlayer;
+        if (TitlesData.SetupData.Type === "auto") {
+            this.setRank(steamID, TitlesData.PlayerData[steamID].Kills, player)
+        }
+        this.saveTitleData();
+    } catch(e) {
+        print(e.message.toString());
+    }
+    },
+
+    buildSetupData: function() {
+        TitlesData.SetupData.Type = TitlesData.SetupData.Type || "";
+
+    },
+    saveTitleData: function() {
+        //Save our data to our titles data file
+        data.SaveData('RanksandTitles');
+        if (GroupsAPI) {
+            data.SaveData('Groups');
+        }
+    },
+
+    cmddebugdata: function(player, cmd, args) {
+        print("Data Re ran")
+        this.checkPlayerData(player);
+    },
+
+    /*-----------------------------------------------------------------
+                      Run Setup
+      ------------------------------------------------------------------*/
+
+    cmdStartSetup: function(player, cmd, args) {
+        var authLvl = player.net.connection.authLevel;
+        if (authLvl >= 2 && args.length < 1) {
+            rust.SendChatMessage(player, "RankAndTitles", "How do you want titles to run? Automated(Ranks) or Custom", "0");
+            rust.SendChatMessage(player, "RankAndTitles", "For info type /setup info auto or custom", "0");
+        } else if (authLvl >= 2 && args.length >= 1) {
+            switch (args[0]) {
+                case "info":
+                    print(args[1]);
+                    if (args[1] === "auto") {
+                        rust.SendChatMessage(player, "RankAndTitles", "Auto messages work as a Ranking system for players this is an automated system based on kills later this may be used with my bounty board plugin", "0");
+                    } else if (args[1] === "custom") {
+                        rust.SendChatMessage(player, "RankAndTitles", "Custom titles works for if you want to create and assign your own custom titles", "0");
+                    } else {
+                        rust.SendChatMessage(player, "RankAndTitles", "You didn't use auto or custom in the command for info.", "0");
+                    }
+                    break;
+                case "auto":
+                    rust.SendChatMessage(player, "RankAndTitles", "You've chosen auto! Great! Now you can use /autitle finish to finish setup.", "0");
+                    try {
+                    command.AddChatCommand("autitle", this.Plugin, "setupAuto");
+                } catch(e) {
+                    print(e.messages.toString());
+                }
+                    break;
+                case "custom":
+                    rust.SendChatMessage(player, "RankAndTitles", "You've chosen custom! Great! Now you can use /cutitle finish to finish setup.", "0");
+                    command.AddChatCommand("cutitle", this.Plugin, "sutpCustom");
+                    break;
+                default:
+                    rust.SendChatMessage(player, "RankAndTitles", "Incorrect command structure, please try again.", "0");
+                    break;
+            }
+        } else {
+            rust.SendChatMessage(player, "RankAndTitles", "You do not have permission to use this command!", "0");
+        }
+    },
+
+    setupAuto: function(player, cmd, args) {
+        try {
+        var authLvl = player.net.connection.authLevel;
+        if (authLvl >= 2) {
+            if (TitlesData.SetupData.Type == "custom" && !args.length) {
+                rust.SendChatMessage(player, "RankAndTitles", "WARNING: Your current type is" + TitlesData.SetupData.Type + "changing this will reset your data files! Recommend Backing them up!", "0");
+            } else if (TitlesData.SetupData.Type === "" && !args.length) {
+                rust.SendChatMessage(player, "RankAndTitles", "please use /autitle finish to finish setup.", "0")
+            } else {
+                rust.SendChatMessage(player, "RankAndTitles", "You already have auto set! no need to set it again!", "0");
+            }
+            if (args.length && args[0] === "finish") {
+                rust.SendChatMessage(player, "RankAndTitles", "Great! The plugin will now build the correct data and configurations.", "0");
+                TitlesData.SetupData.Type = "auto";
+                this.startPlugin();
+                this.saveTitleData();
+            }
+        } else {
+            rust.SendChatMessage(player, "RankAndTitles", "You do not have permission to use this command!", "0");
+        }
+
+    } catch(e) {
+        print(e.message.toString());
+    }
+    },
+
+    setupCustom: function(player, cmd, args) {
+        var authLvl = player.net.connection.authLevel;
+        if (authLvl >= 2) {
+            if (TitlesData.SetupData.Type == "auto" && !args.length) {
+                rust.SendChatMessage(player, "RankAndTitles", "WARNING: Your current type is" + TitlesData.SetupData.Type + "changing this will reset your data files! Recommend Backing them up!", "0");
+            } else if (TitlesData.SetupData.Type === "" && !args.length) {
+                rust.SendChatMessage(player, "RankAndTitles", "please use /cutitle finish to finish setup.", "0");
+            } else {
+                rust.SendChatMessage(player, "RankAndTitles", "You already have custom set! no need to set it again!", "0");
+            }
+            if (args.length && args[0] === "finish") {
+                rust.SendChatMessage(player, "RankAndTitles", "Great! The plugin will now build the correct data and configurations.", "0");
+                TitlesData.SetupData.Type = "custom";
+                this.startPlugin();
+                this.saveTitleData();
+            }
+        } else {
+            rust.SendChatMessage(player, "RankAndTitles", "You do not have permission to use this command!", "0");
+        }
+    },
+
+    /*-----------------------------------------------------------------
+                Start Plugin if we should capture deaths
+                This is skipped to after setup is finished
+      ------------------------------------------------------------------*/
+
+    startPlugin: function() {
+        print("Plugin Successfully Setup!");
+        if (TitlesData.SetupData.Type === "auto") {
+            print("Plugin Started in: Auto");
+            command.AddChatCommand("kcheck", this.Plugin, "checkKills");
+            command.AddChatCommand("dcheck", this.Plugin, "checkDeaths");
+            captureDeaths = true;
+        } else if (TitlesData.SetupData.Type === "custom") {
+            print("Plugin Started in: Custom");
+            command.AddChatCommand("title", this.Plugin, "giveTitle");
+            command.AddChatCommand("shp", this.Plugin, "showPlayers");
+            command.AddChatCommand("hide", this.Plugin, "hideAllAdmins");
+            captureDeaths = false;
+        } else {
+            print("Something Didn't take, I think we hit an issue with Type in the Data file.");
+        }
+    },
+    /*--------------------Auto System Setup----------------------------
+      -----------------------------------------------------------------
+                      Get our Counts and set Ranks
+      ------------------------------------------------------------------*/
+
+    setRank: function(steamID, kills, killer) {
+        try {
+        print("Hit SetRank");
+        var ranks = this.Config.Ranks;
+        print(ranks);
+        neededKills = ranks.killsNeeded;
+
+        if (kills >= 0 && !GroupsAPI) {
+            for (var i = 0; i < ranks.length; i++) {
+                if (kills === ranks[i].killsNeeded) {
+                    killer.DisplayName = TitlesData.PlayerData[steamID].RealName + "[" + ranks[i].title + "]";
+                    TitlesData.PlayerData[steamID].Title = ranks[i].title;
+                }
+            }
+            //If Groups is present we will use this instead so we don't clash with groups
+        } else if (kills >= 0 && GroupsAPI) {
+            print("Setting Rank Debug...")
+            print(kills);
+            for (var i = 0; i < ranks.length; i++) {
+                print(ranks[i].killsNeeded);
+                if (kills === ranks[i].killsNeeded) {
+                    GroupData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName + "[" + ranks[i].title + "]"
+                    TitlesData.PlayerData[steamID].Title = ranks[i].title;
+                }
+            }
+        }
+            this.saveTitleData();
+
+    } catch(e) {
+        print(e.message.toString());
+    }
+    },
+
+    checkKills: function(player, cmd, args) {
+        var steamID = rust.UserIDFromPlayer(player);
+        rust.SendChatMessage(player, "Ranks", "Your Kill count is: " + TitlesData.PlayerData[steamID].Kills, "0");
+    },
+
+    checkDeaths: function(player, cmd, args) {
+        var steamID = rust.UserIDFromPlayer(player);
+        rust.SendChatMessage(player, "Ranks", "Your Death count is: " + TitlesData.PlayerData[steamID].Deaths, "0");
+    },
+
+    /*-----------------------------------------------------------------
+                      Check for Deaths
+      ------------------------------------------------------------------*/
+
+    OnEntityDeath: function(self, entity, hitinfo) {
+        if (captureDeaths) {
+            var victim = entity;
+            var attacker = hitinfo.Initiator;
+            print(attacker);
+            if (victim == 'BasePlayer' && attacker.ToPlayer()) {
+                var killer = attacker.ToPlayer();
+                var steamID = rust.UserIDFromPlayer(killer)
+                TitlesData.PlayerData[steamID].Kills + 1
+                this.setRank(steamID, TitlesData.PlayerData[steamID].Kills, killer);
+            }
+        }
+    },
+    /*-------------------End of Auto System Setup----------------------
+      -------------------Start Custom System Setup---------------------*/
+    setCustom: function(steamID, player) {
+        var getAuth = player.net.connection.authLevel;
+        var getTitles = this.Config.Titles;
+        var getSettings = this.Config.Settings;
+        if (GroupsAPI && showPlayer) {
+            for (var j = 0; j < getTitles.length; j++) {
+                if (getTitle[j].Exclude && getAuth > 0 && getAuth === getTitles[j].authLvl) {
+                    if (TitlesData.PlayerData[steamID].Title === "") {
+                        TitlesData.PlayerData[steamID].Title = getTitles[j].title
+                    };
+                    GroupData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName + "[" + TitlesData.PlayerData[steamID].Title + "]";
+                } else if (getTitle[j].Exclude && getAuth === 0 && TitlesData.PlayerData[steamID].Title === getTitles[j].title) {
+                    if (TitlesData.PlayerData[steamID].Title === "") {
+                        TitlesData.PlayerData[steamID].Title = getTitles[j].title
+                    };
+                    GroupData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName + "[" + TitlesData.PlayerData[steamID].Title + "]";
+                } else {
+                    GroupData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName;
+                }
+            }
+        } else if (!GroupsAPI && showPlayer) {
+            for (var j = 0; j < getTitles.length; j++) {
+                if (getTitle[j].Exclude && getAuth > 0 && getAuth === getTitles[j].authLvl) {
+                    if (TitlesData.PlayerData[steamID].Title === "") {
+                        TitlesData.PlayerData[steamID].Title = getTitles[j].title
+                    };
+                    player.DisplayName = TitlesData.PlayerData[steamID].RealName + "[" + TitlesData.PlayerData[steamID].Title + "]";
+                } else if (getTitle[j].Exclude && getAuth === 0 && TitlesData.PlayerData[steamID].Title === getTitles[j].title) {
+                    if (TitlesData.PlayerData[steamID].Title === "") {
+                        TitlesData.PlayerData[steamID].Title = getTitles[j].title
+                    };
+                    player.DisplayName = TitlesData.PlayerData[steamID].RealName + "[" + TitlesData.PlayerData[steamID].Title + "]";
+                } else {
+                    player.DisplayName = TitlesData.PlayerData[steamID].RealName;
+                }
+            }
+        } else {
+            player.DisplayName = TitlesData.PlayerData[steamID].RealName;
+        }
+        this.saveTitleData();
+    },
+
+    showPlayers: function(player, cmd, args) {
+        if (authLvl >= 2) {
+            if (showPlayer) {
+                showPlayer = false;
+                this.SaveConfig();
+                rust.SendChatMessage(player, "RankAndTitles", "Player Titles disabled", "0");
+            } else {
+                showPlayer = true;
+                this.SaveConfig();
+                rust.SendChatMessage(player, "RankAndTitles", "Player Titles enabled", "0");
+            }
+        } else {
+            rust.SendChatMessage(player, "RankAndTitles", "You do not have permission to use this command!", "0");
+        }
+    },
+
+    hideAllAdmins: function(player, cmd, args) {
+        //TODO: write command function to hide admin titles from chat
+    },
+
+    giveTitle: function(player, cmd, args) {
+        //TODO: write command function so admin can give users custom titles
     }
 
-};
+}
