@@ -1,7 +1,7 @@
 var rules = {
     Title: "Rules",
     Author: "Killparadise",
-    Version: V(1, 1, 0),
+    Version: V(1, 3, 1),
     HasConfig: true,
     Init: function() {
         print('Loaded Rules from Config: ' + this.Config.setRules.length);
@@ -52,7 +52,7 @@ var rules = {
         var rules = this.Config.setRules;
         var rulLen = rules.length + 1;
 
-        if (args.length < 2 && authLvl >= 2) {
+        if (args.length < 2) {
             for (var j = 0; j < this.Config.Messages.AddBadSyntax.length; j++) {
                 rust.SendChatMessage(player, "RULES", this.Config.Messages.AddBadSyntax[j], "0");
                 return;
@@ -69,7 +69,7 @@ var rules = {
         }
     },
 
-    cmdDelRule: function(player, cmd, args) {
+cmdDelRule: function(player, cmd, args) {
         var authLvl = player.net.connection.authLevel;
         var rules = this.Config.setRules;
         var tempSave = [];
@@ -77,27 +77,28 @@ var rules = {
             for (var j = 0; j < this.Config.Messages.DelBadSyntax.length; j++) {
                 rust.SendChatMessage(player, "RULES", this.Config.Messages.DelBadSyntax[j], "0");
                 return;
-            } else if (authLvl >= 2 && args.length >= 2) {
-                for (var i = 0; i < rules.length; i++) {
-                    try {
-                        if (rules.indexOf(i) != args[1]) {
-                            tempSave.push(rules[i]);
-                        } else {
-                            continue;
-                        }
-                    } catch (e) {
-                        print(e.message.toString());
-                    }
-                }
-                this.Config.Clear();
-                for (var ii = 0; ii < tempSave.length; ii++) {
-                    this.Config.setRules.push(tempSave[ii]);
-                }
-                this.SaveConfig();
-                return;
-            } else {
-                rust.SendChatMessage(player, "RULES", "No Permissions to use this command.", "0");
             }
+        } else if (authLvl >= 2 && args.length >= 2) {
+            for (var i = 0; i < rules.length; i++) {
+                try {
+                    if (rules.indexOf(rules[i]) != (args[1] - 1)) {
+                        tempSave.push(rules[i]);
+                    } else {
+                        continue;
+                    }
+                } catch (e) {
+                    print(e.message.toString());
+                }
+            }
+            this.Config.setRules = [];
+            for (var ii = 0; ii < tempSave.length; ii++) {
+                this.Config.setRules.push(tempSave[ii]);
+            }
+            rust.SendChatMessage(player, "RULES", "Rule Deleted Successfully", "0");
+            this.SaveConfig();
+            return;
+        } else {
+            rust.SendChatMessage(player, "RULES", "No Permissions to use this command.", "0");
         }
     },
 
@@ -105,7 +106,8 @@ var rules = {
         var authLvl = player.net.connection.authLevel;
         rust.SendChatMessage(player, "RULES", "/rules - Show the list of server rules", "0");
         if (authLvl >= 2) {
-            rust.SendChatMessage(player, "RULES", "/rules add - Add a new rule to the list", "0");
+            rust.SendChatMessage(player, "RULES", '/rules add "Rule in quotes here" - Add a new rule to the list', "0");
+            rust.SendChatMessage(player, "RULES", "/rules del # - removes the rule listed with given number", "0");
         }
     }
 };
