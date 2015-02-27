@@ -4,27 +4,20 @@ var BountyBoard = {
     Version: V(0, 1, 0),
     HasConfig: true,
     Init: function() {
-        GroupsAPI = plugins.Find('RotAG-Groups');
-        if (GroupsAPI) {
-            GroupsAPI = true;
-        } else {
-            GroupsAPI = false;
-            print("Groups not found!");
-        }
-        TitlesAPI = plugins.Find('RanksandTitles');
-        if (TitlesAPI) {
-            titlesEnabled = true;
-        } else {
-            titlesEnabled = false;
-            print("Titles not found!");
-        }
-        GetEconomyAPI = plugins.Find('00-Economics');
-        if (GetEconomyAPI) {
-            EconomyAPI = GetEconomyAPI();
+        try {
+        GetEconomy = plugins.Find('00-Economics');
+        if (GetEconomy) {
+            print("Found Economics")
+            EconAPI = GetEconomyAPI()
+            print(EconomyAPI)
         } else {
             print("Economics not found!");
         }
-        this.loadTitleData();
+    } catch(e) {
+        print(e.message.toString());
+        print(GetEconomy)
+    }
+        this.getData();
     },
     OnServerInitialized: function() {
         print(this.Title + " Is now loading, please wait...");
@@ -38,14 +31,6 @@ var BountyBoard = {
             "autoBounties": true,
             "maxBounty": 100000
         };
-        if (titlesEnabled) {
-            this.Config.BountyPerTitle = [];
-            for (var i = 0; i < titles.Config.autoTitles.length; i++) {
-                this.Config.BountyPerTitle.push({
-                    titles.Config.autoTitles[i].title, "Bounty": 0
-                })
-            }
-        }
     },
 
     OnPlayerInit: function(player) {
@@ -57,11 +42,7 @@ var BountyBoard = {
         BountyData = BountyData || {};
         BountyData.Bounties = BountyData.Bounties || {};
         BountyData.PlayerData = BountyData.PlayerData || {};
-        if (titlesEnabled) {
-            TitlesData = data.GetData('Titles');
-            TitlesData = TitlesData;
-            TitlesData.PlayerData = TitlesData.PlayerData
-        }
+        this.saveData();
     },
 
     saveData: function() {
@@ -70,14 +51,15 @@ var BountyBoard = {
 
     checkPlayerData: function(player) {
         var steamID = rust.UserIDFromPlayer(player);
+        var authLvl = player.net.connection.authLevel;
         BountyData.PlayerData[steamID] = BountyData.PlayerData[steamID] || {};
-        BountyData.PlayerData[steamID].Title = TitlesData.PlayerData[steamID].Title || "Disabled";
         BountyData.PlayerData[steamID].Bounty = BountyData.PlayerData[steamID].Bounty || 0;
         BountyData.PlayerData[steamID].Kills = BountyData.PlayerData[steamID].Kills || 0;
         BountyData.PlayerData[steamID].Deaths = BountyData.PlayerData[steamID].Deaths || 0;
-        BountyData.Bounties[steamID] = BountyData.Bounties[steamID] || {};
-        BountyData.Bounties[steamID].Target = BountyData.Bounties[steamID].Target || GroupsData.PlayerData[steamID].RealName || player.DisplayName || "";
+        BountyData.PlayerData[steamID].isStaff = BountyData.PlayerData[steamID].isStaff || (authLvl > 0) || false;
+        BountyData.Bounties[steamID].Target = BountyData.Bounties[steamID].Target || player.DisplayName || "";
         BountyData.Bounties[steamID].Amount = BountyData.Bounties[steamID].Amount || 0;
+        this.saveData();
     },
 
     cmdBounty: function(player, cmd, args) {
@@ -96,16 +78,18 @@ var BountyBoard = {
     },
 
     addBounty: function(player, cmd, args) {
-        var EconomyData = EconomyAPI: GetUserDataFromPlayer(player);
-        var EconomyData = EconomyAPI: GetUserData(steamID);
+        try {
+        var steamID = rust.UserIDFromPlayer(player);
+        EconomyData = EconomyAPI.GetUserDataFromPlayer(player);
+        EconomyData = EconomyAPI.GetUserData(steamID);
         var authLvl = player.net.connection.authLevel;
-        if (this.Config.canSetBounties && !(authLvl >= this.Config.authLevel)) {
+        if (this.Config.canSetBounties && !BountyData.PlayerData[steamID].isStaff) {
             if (args[0] === "add" && args.length === 3) {
                 var target = args[2].ToPlayer();
                 var amount = args[3];
                 var targetID = rust.UserIDFromPlayer(target);
                 if (targetID.length && amount < this.Config.Settings.maxBounty) {
-                    if (EconomyData: Withdraw(amount)) {
+                    if (EconomyData.Withdraw(amount)) {
                         BountyData.PlayerData[targetID].Bounty = amount;
                         rust.SendChatMessage(player, "BountyBoard", "Set " + amount + " On player: " + target, "0");
                         rust.SendChatMessage(target, "BountyBoard", "Someone place a " + amount + " Bounty on you!", "0");
@@ -117,27 +101,33 @@ var BountyBoard = {
                     rust.SendChatMessage(player, "BountyBoard", "You canot exceed the set max bounty: " + this.Config.Settings.maxBounty, "0");
                 } else if (!targetID.length) {
                     rust.SendChatMessage(player, "BountyBoard", "Invalid Player name, please try again.", "0");
+                } else {
+                    rust.SendChatMessage(player, "BountyBoard", "Invalid Syntax please use: /bounty add playername amount", "0");
                 }
             }
         } else {
             rust.SendChatMessage(player, "BountyBoard", "Sorry this is disabled currently!", "0");
         }
+    } catch(e) {
+        print(e.message.toString())
+    }
     },
 
     updateBoard: function(target, amount, targetID) {
         //TODO: update the bounty board with new bounties and claimed bounties.
         BountyData.Bounties[targetID].Amount = amount;
         this.saveData();
+        EconomyData.SaveData();
     },
 
     checkBoard: function(player, cmd, args) {
-        rust.SendChatMessage(player, "BountyBoard", "------Bounty Board------", "0");
+        rust.SendChatMessage(player, "", "------Bounty Board------", "0");
         for (var i = 0; i < BountyData.Bounties.length; i++) {
             if (BountyData.Bounties[i].Amount > 0) {
-                rust.SendChatMessage(player, "BountyBoard", BountyData.Bounties[i].Target + ": $" + BountData.Bounties[i].Amount, "0");
+                rust.SendChatMessage(player, "", BountyData.Bounties[i].Target + ": $" + BountData.Bounties[i].Amount, "0");
             }
         }
-        rust.SendChatMessage(player, "BountyBoard", "------Happy Hunting------", "0");
+        rust.SendChatMessage(player, "", "------Happy Hunting------", "0");
     },
 
     OnEntityDeath: function(entity, hitinfo) {
@@ -145,12 +135,13 @@ var BountyBoard = {
         var attacker = hitinfo.Initiator;
         attacker = attacker.ToPlayer();
         var victimID = rust.UserIDFromPlayer(victim), attackerID = rust.UserIDFromPlayer(attacker);
-        var EconomyData = EconomyAPI: GetUserDataFromPlayer(player);
-        var EconomyData = EconomyAPI: GetUserData(attackerID);
+        var EconomyData = EconomyAPI.GetUserDataFromPlayer(player);
+        var EconomyData = EconomyAPI.GetUserData(attackerID);
         if (victim.indexOf('BasePlayer') > -1 && BountyData.Bounties[victimID].Amount > 0) {
             var victimID = rust.UserIDFromPlayer(victim)
-            EconomyData: Deposit(BountyData.Bounties[victimID].Amount);
+            EconomyData.Deposit(BountyData.Bounties[victimID].Amount);
             rust.BroadcastChat("BountyBoard", attack.DisplayName + " Has claimed the bounty on " + victim.DisplayName + " In the Amount of: " + BountyData.Bounties[victimID].Amount)
+            EconomyData.SaveData();
             this.updateBoard(victim, 0, victimID);
         }
     }
