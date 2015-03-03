@@ -1,3 +1,9 @@
+//TODO: Fix OnEntityDeath kills and death math for natural causes of death
+//- Improve setup stability
+//- Improve auto title stability
+//- Write Console Commands
+//- Do a bit more Debugging and fix if needed more code
+//- Maybe reorganize a bit/improve code system
 var RanksAndTitles = {
   Title: "Ranks And Titles",
   Author: "Killparadise",
@@ -380,7 +386,8 @@ var RanksAndTitles = {
     try {
       var victim = entity;
       var attacker = hitinfo.Initiator;
-      if (victim.ToPlayer() && attacker.ToPlayer() && TitlesData.SetupData.Type === "ranks") {
+      var death = this.checkDeath(entity.lastDamage.toString().toUpperCase());
+      if (victim.ToPlayer() && attacker.ToPlayer() && TitlesData.SetupData.Type === "ranks" && death) {
         var killer = attacker.ToPlayer();
         var killerID = rust.UserIDFromPlayer(killer);
         var victimID = rust.UserIDFromPlayer(victim);
@@ -390,11 +397,46 @@ var RanksAndTitles = {
         this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
         this.setRank(killerID, TitlesData.PlayerData[killerID].Kills, killer);
         this.saveData();
+      } else if (victim.ToPlayer() && !death) {
+        var victimID = rust.UserIDFromPlayer(victim);
+        TitlesData.PlayerData[victimID].Deaths += 1;
+        this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
+        this.saveData();
+      } else {
+        print("Debug: No Player Killed")
       }
     } catch(e) {
       print(e.message.toString());
     }
   },
+
+  checkDeath: function(death) {
+    //This is going to verify if the player was killed naturally, or through pvp
+    switch(death){
+      case "SUICIDE":
+        return false;
+        break;
+      case "EXLPOSION":
+        return false;
+        break;
+      case "BITE":
+        return false;
+        break;
+      case "FALL":
+        return false;
+        break;
+      case "COLD":
+        return false;
+        break;
+      case "RADIATION":
+        return false;
+        break;
+      default:
+        return true;
+        break;
+    }
+  },
+
   /*-------------------End of ranks System Setup----------------------
     -------------------Start titles System Setup---------------------*/
 
