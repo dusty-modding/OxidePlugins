@@ -1,7 +1,7 @@
 var RanksAndTitles = {
   Title: "Ranks And Titles",
   Author: "Killparadise",
-  Version: V(0, 1, 1),
+  Version: V(0, 1, 2),
   ResourceId: 830,
   HasConfig: true,
   Init: function() {
@@ -225,7 +225,15 @@ var RanksAndTitles = {
         } else if (args.length && args[0] === "finish" && TitlesData.SetupData.Type == "titles") {
           TitlesData.SetupData.Type = "ranks";
           print("Converting player data from titles, to ranks.");
+          this.startPlugin();
+          this.saveData();
           rust.BroadcastChat('RanksAndTitles', "The Server Admin has switched to Ranks, please use /rtconvert to reload your player ranks and titles data.", 0);
+        } else if (args.length && args[0] === "finish" && TitlesData.SetupData.Type == "") {
+          TitlesData.SetupData.Type = "ranks";
+          print("Converting player data from titles, to ranks.");
+          this.startPlugin();
+          this.saveData();
+          rust.SendChatMessage(player, "RankAndTitles", "Great! The plugin will now build the correct data and configurations.", "0")
         }
       } else {
         rust.SendChatMessage(player, "RankAndTitles", "You do not have permission to use this command!", "0");
@@ -251,7 +259,13 @@ var RanksAndTitles = {
         TitlesData.SetupData.Type = "titles";
         print("Converting player data from ranks, to titles.");
         rust.BroadcastChat('RanksAndTitles', "The Server Admin has switched to Titles, please use /rtconvert to reload your player ranks and titles data.", 0);
-      }
+      } else if (args.length && args[0] === "finish" && TitlesData.SetupData.Type == "") {
+          TitlesData.SetupData.Type = "titles";
+          print("Converting player data from titles, to ranks.");
+          this.startPlugin();
+          this.saveData();
+          rust.SendChatMessage(player, "RankAndTitles", "Great! The plugin will now build the correct data and configurations.", "0")
+        }
     } else {
       rust.SendChatMessage(player, "RankAndTitles", "You do not have permission to use this command!", "0");
     }
@@ -308,7 +322,11 @@ var RanksAndTitles = {
   },
 
   updateKDR: function(kills, deaths, player) {
-
+    var steamID = rust.UserIDFromPlayer(player);
+    var killsToDeaths = kills/deaths;
+    killsToDeaths = Math.ceil(killsToDeaths * 100) / 100;
+    TitlesData.PlayerData[steamID].KDR = killsToDeaths;
+    this.saveData();
   },
 
   switchRankCmd: function(player, cmd, args) {
@@ -327,6 +345,7 @@ var RanksAndTitles = {
         break;
       default:
         rust.SendChatMessage(player, "Ranks", "Your current rank is: " + TitlesData.PlayerData[steamID].Rank, "0");
+        break;
     }
   },
 
@@ -405,6 +424,7 @@ var RanksAndTitles = {
           } else {
             rust.SendChatMessage(player, "Titles", "Command Unknown, please try again.", "0");
           }
+            break;
       }
   },
 
