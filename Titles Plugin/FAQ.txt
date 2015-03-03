@@ -1,0 +1,37 @@
+[B][U]How To Add Custom Ranks[/U][/B]
+Copy and Paste one of the current ranks as it is like so:
+[code=javascript]
+{
+      "rank": 0.0,
+      "title": "New Guy",
+      "killsNeeded": 0.0
+    }
+[/code]
+Now paste it and update your values:
+[code=javascript]
+{
+      "rank": 1.0,
+      "title": "That Dude",
+      "killsNeeded": 5.0
+    }
+[/code]
+And that's it! the plugin will now use this rank when a player hits 5 kills!
+
+[B][U]How To Add Custom Titles[/U][/B]
+Copy and Paste one of the current titles as it is like so:
+[code=javascript]
+{
+      "authLvl": 2.0,
+      "title": "Owner",
+      "Exclude": true
+    }
+[/code]
+Now paste it and update your values:
+[code=javascript]
+{
+      "authLvl": 2.0,
+      "title": "Best Owner",
+      "Exclude": true
+    }
+[/code]
+What does Exclude mean? Well this is a current config setting for when I introduce hiding entire titles rather than just certain ones. right now I would leave it as true.
