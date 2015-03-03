@@ -377,6 +377,7 @@ var RanksAndTitles = {
     ------------------------------------------------------------------*/
 
   OnEntityDeath: function(entity, hitinfo) {
+    try {
       var victim = entity;
       var attacker = hitinfo.Initiator;
       if (victim.ToPlayer() && attacker.ToPlayer() && TitlesData.SetupData.Type === "ranks") {
@@ -390,6 +391,9 @@ var RanksAndTitles = {
         this.setRank(killerID, TitlesData.PlayerData[killerID].Kills, killer);
         this.saveData();
       }
+    } catch(e) {
+      print(e.message.toString());
+    }
   },
   /*-------------------End of ranks System Setup----------------------
     -------------------Start titles System Setup---------------------*/
