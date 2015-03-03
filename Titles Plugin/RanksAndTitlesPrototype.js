@@ -94,12 +94,17 @@ var RanksAndTitles = {
                     When the Player finishes loading in
     ------------------------------------------------------------------*/
     OnPlayerInit: function(player) {
+      var authLvl = player.net.connection.authLevel;
         steamID = rust.UserIDFromPlayer(player);
         this.checkPlayerData(player);
         if (TitlesData.SetupData.Type === "ranks") {
             this.setRank(steamID, TitlesData.PlayerData[steamID].Kills, player)
         } else if (TitlesData.SetupData.Type === "titles") {
             this.setTitles(steamID, player);
+        }
+        if (TitlesData.SetupData.Type && TitlesData.SetupData.Type != "" && authLvl >= 2) {
+          rust.SendChatMessage(player, "RanksAndTitles", "Thanks for choosing RanksAndTitles! No System Set yet.", "0");
+          rust.SendChatMessage(player, "RanksAndTitles", "Please use /set or /set info to get started!", "0");
         }
     },
 
@@ -269,7 +274,7 @@ var RanksAndTitles = {
             for (var i = 0; i < ranks.length; i++) {
                 if (kills === ranks[i].killsNeeded) {
                     GroupData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName + "[" + ranks[i].title + "]"
-                    killer.DisplayName = TitlesData.PlayerData[steamID].RealName + "[" + ranks[i].title + "]"
+                    //killer.DisplayName = TitlesData.PlayerData[steamID].RealName + "[" + ranks[i].title + "]"
                     TitlesData.PlayerData[steamID].Title = ranks[i].title;
                     TitlesData.PlayerData[steamID].Rank = ranks[i].rank
                 }
