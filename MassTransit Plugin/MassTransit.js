@@ -11,17 +11,15 @@ var MassTransit = {
 
     LoadDefaultConfig: function() {
         this.Config.Settings = {
-            authLvl = 2,
-                playersCanUse = true,
-                useEconomics = true,
-                transitPerms = true
+            "authLvl": 2,
+            "playersCanUse": true,
+            "useEconomics": true,
+            "transitPerms": true
         }
-        this.Config.Perms = [{
-            "name": "lvl 1",
-            "playeruse": true,
-            "playerCost": true,
-            "adminCost": false
-        }]
+        this.Config.Terms = {
+            "Transit": "Transit",
+            "Currency": "Dollars"
+        }
     },
 
     loadSetupData: function() {
@@ -85,11 +83,10 @@ var MassTransit = {
         }
         var start = null,
             end = null;
-            var name = args[1];
+        var name = args[1];
         if (args.length >= 2) {
             var countDown = args[2];
-            var cost = args[3] || "";
-            var perms = args[4] || "";
+            var cost = args[3] || 0;
         }
         //Let's get the start and end positions for the transit
         if (TransitData.Transits[name] == null && start = null) {
@@ -121,32 +118,122 @@ var MassTransit = {
             TransitData.Transits[name].Perms = perms;
         }
 
-        if(TransitData.Transits[name]) {
-            rust.SendChatMessage(player, "Transit", "Transit Setup Finished with the Values of:", "0");
-            rust.SendChatMessage(player, "Transit", "Start: " +"X: " +ransitData.Transits[name].Start.x1+" Y: "+ransitData.Transits[name].Start.y1+" Z: "+ransitData.Transits[name].Start.z1 , "0");
-            rust.SendChatMessage(player, "Transit", "End: " +"X: " +ransitData.Transits[name].End.x2+" Y: "+ransitData.Transits[name].End.y2+" Z: "+ransitData.Transits[name].End.z2 , "0");
-            rust.SendChatMessage(player, "Transit", "Named: "+TransitData.Transits[name], "0");
-            rust.SendChatMessage(player, "Transit", "Countdown: "+TransitData.Transits[name].CountDown, "0");
-            rust.SendChatMessage(player, "Transit", "Cost: "+TransitData.Transits[name].Cost, "0");
-            rust.SendChatMessage(player, "Transit", "Perms: "+TransitData.Transits[name].Perms, "0");
+        if (TransitData.Transits[name]) {
+            rust.SendChatMessage(player, "Transit", this.Config.Terms.Transit + " Setup Finished with the Values of:", "0");
+            rust.SendChatMessage(player, "Transit", "Start: " + "X: " + ransitData.Transits[name].Start.x1 + " Y: " + ransitData.Transits[name].Start.y1 + " Z: " + ransitData.Transits[name].Start.z1, "0");
+            rust.SendChatMessage(player, "Transit", "End: " + "X: " + ransitData.Transits[name].End.x2 + " Y: " + ransitData.Transits[name].End.y2 + " Z: " + ransitData.Transits[name].End.z2, "0");
+            rust.SendChatMessage(player, "Transit", "Named: " + TransitData.Transits[name], "0");
+            rust.SendChatMessage(player, "Transit", "Countdown: " + TransitData.Transits[name].CountDown, "0");
+            rust.SendChatMessage(player, "Transit", "Cost: " + TransitData.Transits[name].Cost, "0");
+            rust.SendChatMessage(player, "Transit", "Perms: " + TransitData.Transits[name].Perms, "0");
             rust.SendChatMessage(player, "Transit", "-------------------End-------------------", "0");
         } else {
-            rust.SendChatMessage(player, "Transit", "Setup Failed to build new Transit", "0");
+            rust.SendChatMessage(player, "Transit", "Setup Failed to build new " + this.Config.Terms.Transit, "0");
         }
 
         this.saveData();
 
     },
 
-    travelTransit: function(player, cmd, args) {
+    delTransit: function(player, cmd, args) {
+        // cmd setup: /mtran del transitname
+        var temp = [];
+        if (args.length == 2 && arg[0] === "del") {
+            var transit = arg[1];
+        } else {
+            rust.SendChatMessage(player, "Transit", "Delete Command invalid please use /mtran del transitname", "0");
+        }
 
+        for (var key in TransitData.Transits) {
+            if (transit === TransitData.Transits[key]) {
+                delete TransitData.Transits[key];
+            }
+        }
+        rust.SendChatMessage(player, "Transit", "Successfully deleted " + this.Config.Terms.Transit + ": " + TransitData.Transits[key], "0");
+        this.saveData();
+    },
+
+    travelTransit: function(player, cmd, args) {
+        //TODO: write check to make sure traveller is in the transit region, 
+        //write checks for cost, and perms
+        //write checks for the status of the desired transit system
+        var currPos = player.transform.position;
+        for (var key in TransitData.Transits) {
+            var start = TransitData.Transits[key].Start;
+            var end = TransitData.Transits[key].End;
+            if (this.getDistance(player, currPos)) {
+
+            }
+        }
     },
 
     checkTransits: function(player, cmd, args) {
+        //cmd setup: /mtran check transitname
+        if (args.length == 2 && arg[0] === "check") {
+            var transit = arg[1];
+        } else {
+            rust.SendChatMessage(player, "Transit", "Check command invalid please use /mtran check transitname", "0");
+        }
+
+        if (TransitData.Transits[transit]) {
+            rust.SendChatMessage(player, "Transit", this.Config.Terms.Transit + " Cost: " + TransitData.Transits[transit].Cost + " " + this.Config.Terms.Currency, "0");
+            rust.SendChatMessage(player, "Transit", this.Config.Terms.Transit + " CountDown: " + TransitData.Transits[transit].CountDown, "0");
+            rust.SendChatMessage(player, "Transit", this.Config.Terms.Transit + " Status: " +
+                if (TransitData.Transits[transit].Active) "Online": "Offline", "0");
+        } else {
+            rust.SendChatMessage(player, "Transit", this.Config.Terms.Transit + " not found!", "0");
+        }
 
     },
 
     checkOnline: function(player, cmd, args) {
+        var count = 0,
+            offCount = 0;
+        rust.SendChatMessage(player, "Transit", "-------------Online " + this.Config.Terms.Transit + "-------------", "0");
+        for (var key in TransitData.Transits) {
+            if (TransitData.Transits[key].Active) {
+                count++
+                rust.SendChatMessage(player, "", TransitData.Transits[key], "0");
+            } else {
+                offCount++
+                rust.SendChatMessage(player, "", TransitData.Transits[key], "0");
+            }
+        }
+        rust.SendChatMessage(player, "Transit", this.Config.Terms.Transit + " Online: " + count, "0");
+        rust.SendChatMessage(player, "Transit", this.Config.Terms.Transit + " Offline: " + offCount, "0");
+        rust.SendChatMessage(player, "Transit", "----------------------------------------" + offCount, "0");
+    },
 
+    getDistance: function(player, playerPos) {
+        var xs = 0;
+        var ys = 0;
+
+        for (var key in TransitData.Transits) {
+            var startLoc = TransitData.Transits[key].Start;
+            var endLoc = TransitData.Transits[key].End;
+            //Starter Locations for Transits
+            xs = startLoc.x1 - playerPos.x;
+            xs = xs * xs;
+
+            zs = startLoc.z1 - playerPos.z;
+            zs = zs * zs;
+            
+            //End Locations for Transits
+            Endxs = endLoc.x2 - playerPos.x;
+            Endxs = Endxs * Endxs;
+
+            Endzs = endLoc.z2 - playerPos.z;
+            Endzs = Endzs * Endzs;
+
+            var dist = Math.sqrt(xs + zs);
+            var endDist = Math.sqrt(Endxs + Endzs);
+            if (dist <= 10 || endDist <= 10) {
+                print("Found Closest Point!");
+                return true;
+            } else {
+                rust.SendChatMessage(player, "Transit", "No " + this.Config.Terms.Transit + " Found!", "0");
+                return false;
+            }
+        }
     }
 }
