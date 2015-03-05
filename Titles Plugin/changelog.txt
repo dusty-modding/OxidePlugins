@@ -1,4 +1,4 @@
-v0.1.2
+v0.1.2 Outdated
 =========================================
 WARNING: This release is NOT Tested yet. Use at your OWN RISK I have to fix my computer first. Please use the stable 
 release found on oxides website. Thank you.
@@ -15,7 +15,7 @@ release found on oxides website. Thank you.
 -Fixed Scoping issue for some code
 -Made some more progress towards Groups integration (still not 100% yet)
 
-v0.1.3
+v0.1.3 Outdated
 ==============================================
 WARNING: This release is NOT Tested yet. Use at your OWN RISK I have to fix my computer first. Please use the stable 
 release found on oxides website. Thank you.
@@ -27,3 +27,28 @@ release found on oxides website. Thank you.
 -Added better Auth Level checks
 -Integrated better organization
 -Formatting fixes
+
+v0.2.0 (re-release) this is released on Oxide.
+===============================================
+-Fixed Natural Deaths triggering counters
+-Tweaked KDR
+-Added /rtconvert for everyone this will re run your player data.
+-Drastic setup stability improvements
+-Optimized setup methods
+-Stabalized Auto setting titles
+-Fixed /titles set command
+-Optimized finding players by name
+-Unsupported TimedExplosives for now
+-Tweaked Groups support a bit more (Sadly still not fully working)
+-Fixed Errors caused via certain commands
+-Re wrote both methods of setting titles and ranks
+-Improved checks to keep them from missing variables
+-Improved scoping so values don't get mixed up through the plugin
+-ReOrganized how certain code is handled (Should improve performance)
+-Optimized loops for better performance
+-Currently disabled config settings for re organization
+-Fixed Ranks not saving
+-Fixed Rank Titles not saving
+-Fixed both Titles and Ranks not displaying properly(Groups still overwrites my data)
+-Tweaked plugin start up to access playerdata from the getgo easier.
+-Several other Bug Fixes
