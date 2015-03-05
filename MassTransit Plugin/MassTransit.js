@@ -158,11 +158,18 @@ var MassTransit = {
         //write checks for cost, and perms
         //write checks for the status of the desired transit system
         var currPos = player.transform.position;
+        var distanceCheck = this.getDistance(player, currPos)
         for (var key in TransitData.Transits) {
             var start = TransitData.Transits[key].Start;
             var end = TransitData.Transits[key].End;
-            if (this.getDistance(player, currPos)) {
-
+            if (distanceCheck[1] === "Start") {
+                print("Found Start Pos");
+                rust.ForcePlayerPosition(player, start.x1, start.y1, start.z1);
+            } else if (distanceCheck[1] === "End") {
+                print("Found End Pos");
+                ust.ForcePlayerPosition(player, start.x2, start.y2, start.z2);
+            } else {
+                rust.SendChatMessage(player, "Transit", "No " + this.Config.Terms.Transit + " Found!", "0");
             }
         }
     },
@@ -207,6 +214,7 @@ var MassTransit = {
     getDistance: function(player, playerPos) {
         var xs = 0;
         var ys = 0;
+        var temp = [];
 
         for (var key in TransitData.Transits) {
             var startLoc = TransitData.Transits[key].Start;
@@ -217,7 +225,7 @@ var MassTransit = {
 
             zs = startLoc.z1 - playerPos.z;
             zs = zs * zs;
-            
+
             //End Locations for Transits
             Endxs = endLoc.x2 - playerPos.x;
             Endxs = Endxs * Endxs;
@@ -227,12 +235,14 @@ var MassTransit = {
 
             var dist = Math.sqrt(xs + zs);
             var endDist = Math.sqrt(Endxs + Endzs);
-            if (dist <= 10 || endDist <= 10) {
-                print("Found Closest Point!");
-                return true;
-            } else {
-                rust.SendChatMessage(player, "Transit", "No " + this.Config.Terms.Transit + " Found!", "0");
-                return false;
+            if (dist <= 10) {
+                print("Found Closest Point!(Start)");
+                temp.push(dist, "Start");
+                return temp;
+            } else if (endDist <= 10) {
+                print("Found Closest Point!(End)");
+                temp.push(endDist, "End");
+                return temp;
             }
         }
     }
