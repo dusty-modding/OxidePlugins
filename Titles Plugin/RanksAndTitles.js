@@ -181,7 +181,7 @@ var RanksAndTitles = {
             "set": "How do you want the system to run? Ranks or Titles? For more info do /set info",
             "infoRanks": "Ranks for players this is an automated system based on kills & karma; this also supports a Bandit Vs Hero Karma System.",
             "infoTitles": "Titles is a system for a community or calm server, allowing owners to set and create custom user titles.",
-            "convert": "The Server Admin has switched to Ranks, please use /rtconvert to reload your player ranks and titles data.",
+            "convert": "The Server Admin has switched to Ranks, please use /rtrefresh to reload your player ranks and titles data.",
             "finished": "Great! The plugin will now build the correct data and configurations.",
             "errors": "Incorrect command structure, please try again.",
             "customFnd": "Using Custom Title... Skipping Change...",
@@ -210,7 +210,12 @@ var RanksAndTitles = {
                     When the Player finishes loading in
     ------------------------------------------------------------------*/
     OnPlayerInit: function(player) {
+      try {
+        var steamID = rust.UserIDFromPlayer(player);
         this.checkPlayerData(player);
+      } catch(e) {
+        print(e.message.toString())
+      }
     },
 
     /*-----------------------------------------------------------------
@@ -230,6 +235,7 @@ var RanksAndTitles = {
 
     checkPlayerData: function(player) {
         //Okay lets check our data file for player data
+        try {
         var authLvl = player.net.connection.authLevel;
         var steamID = rust.UserIDFromPlayer(player);
         TitlesData.PlayerData[steamID] = TitlesData.PlayerData[steamID] || {};
@@ -251,6 +257,9 @@ var RanksAndTitles = {
             this.setTitles(steamID, player);
         }
         this.saveData();
+      } catch(e) {
+        print(e.message.toString());
+      }
     },
 
     buildSetupData: function() {
@@ -571,6 +580,7 @@ var RanksAndTitles = {
       ------------------------------------------------------------------*/
 
     OnEntityDeath: function(entity, hitinfo) {
+      try {
         var victim = entity,
             attacker = hitinfo.Initiator;
         if (victim.ToPlayer() && attacker.ToPlayer() && TitlesData.SetupData.Type === "ranks" && victim.displayName !== attacker.displayName) {
@@ -596,11 +606,16 @@ var RanksAndTitles = {
             this.setRank(killerID, TitlesData.PlayerData[killerID].Kills, killer);
             this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
             this.updateKDR(TitlesData.PlayerData[killerID].Kills, TitlesData.PlayerData[killerID].Deaths, killer);
-        } else if (victim.ToPlayer() && victim.displayName === attacker.displayName) {
+        } else if (victim.ToPlayer() && victim.displayName === attacker.displayName && TitlesData.SetupData.Type === "ranks") {
             var victimID = rust.UserIDFromPlayer(victim);
             TitlesData.PlayerData[victimID].Deaths += 1;
             this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
+        } else {
+          return false;
         }
+      } catch(e) {
+        print(e.message.toString());
+      }
     },
 
     /*-------------------End of ranks System Setup----------------------
@@ -740,7 +755,7 @@ var RanksAndTitles = {
           var obj = this.Config.Help[key];
             for (var prop in obj) {
               if (authLevel <= 1 && obj === "playerHelp") {
-                rust.SendChatMessage(player, "RanksAndTitles", obj[prop]., "0");
+                rust.SendChatMessage(player, "RanksAndTitles", obj[prop], "0");
                 } else {
                     rust.SendChatMessage(player, "RanksAndTitles", obj[prop], "0");
                 }
