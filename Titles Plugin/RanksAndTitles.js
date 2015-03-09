@@ -293,19 +293,21 @@ var RanksAndTitles = {
             var getPlayer = this.findPlayerByName(player, args[1]);
         }
         var steamID = rust.UserIDFromPlayer(player);
-        print("----Starting Debug-----");
-        print("Groups Name: " + GroupData.PlayerData[steamID].RealName);
-        print("Titles Real Name: " + TitlesData.PlayerData[steamID].RealName);
-        print("Real name after adjustment: " + TitlesData.PlayerData[steamID].RealName.split("] ").pop());
-        if (TitlesData.PlayerData[steamID].RealName.search("<color=")) print("Real name if color shows up in tag: " + TitlesData.PlayerData[steamID].RealName.split(" <").shift());
         if (getPlayer) {
             print("----Starting Player Debug-----");
             print("Groups Name: " + GroupData.PlayerData[getPlayer[1]].RealName);
             print("Titles Real Name: " + TitlesData.PlayerData[getPlayer[1]].RealName);
             print("Real name after adjustment: " + TitlesData.PlayerData[getPlayer[1]].RealName.split("] ").pop());
             if (TitlesData.PlayerData[getPlayer[1]].RealName.search("<color=")) print("Real name if color shows up in tag: " + TitlesData.PlayerData[getPlayer[1]].RealName.split(" <").shift());
+            print("----End Debug----");
+        } else {
+            print("----Starting Debug-----");
+            print("Groups Name: " + GroupData.PlayerData[steamID].RealName);
+            print("Titles Real Name: " + TitlesData.PlayerData[steamID].RealName);
+            print("Real name after adjustment: " + TitlesData.PlayerData[steamID].RealName.split("] ").pop());
+            if (TitlesData.PlayerData[steamID].RealName.search("<color=")) print("Real name if color shows up in tag: " + TitlesData.PlayerData[steamID].RealName.split(" <").shift());
+            print("----End Debug----");
         }
-        print("----End Debug----");
     },
 
     findPlayerByName: function(player, args) {
