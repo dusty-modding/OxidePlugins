@@ -295,6 +295,7 @@ var RanksAndTitles = {
         TitlesData = data.GetData('RanksandTitles');
         TitlesData = TitlesData || {};
         TitlesData.PlayerData = TitlesData.PlayerData || {};
+        GroupData = this.grabGroupData();
     },
 
 
