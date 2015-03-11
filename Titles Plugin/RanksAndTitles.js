@@ -589,15 +589,15 @@ var RanksAndTitles = {
                         }
 
                         for (i; i < j; i++) {
-                            if (karmaOn && this.closest([], karma) === this.Config.Ranks[i].karma) {
+                            if (karmaOn && this.getClosest([], karma) === this.Config.Ranks[i].karma) {
                                 TitlesData.PlayerData[playerID].Title = this.Config.Ranks[i].title;
                                 TitlesData.PlayerData[playerID].Rank = this.Config.Ranks[i].rank;
-                            } else if (!karmaOn && this.closest([], kills) === this.Config.Ranks[i].killsNeeded) {
+                            } else if (!karmaOn && this.getClosest([], kills) === this.Config.Ranks[i].killsNeeded) {
                                 TitlesData.PlayerData[playerID].Title = this.Config.Ranks[i].title;
                                 TitlesData.PlayerData[playerID].Rank = this.Config.Ranks[i].rank;
                             }
                         }
-                        this.checkPromo(oldRank, TitlesData.PlayerData[playerID].Rank, player);
+                        this.checkPromo(oldRank, TitlesData.PlayerData[playerID].Rank, false, player);
                         this.saveData();
                     } catch (e) {
                         print(e.message.toString());
@@ -607,7 +607,6 @@ var RanksAndTitles = {
                 //This is our function if Titles Only mode is set to true, this function is called by our main hub and then sets titles instead
                 //of ranks to a players name. it then send this data back to our data file to be saved
                 setTitle: function(playerID, player) {
-                    try {
                         if (playerID === "Test") return true;
                         var i = 0,
                             j = this.Config.Titles.length,
@@ -621,9 +620,7 @@ var RanksAndTitles = {
                                 }
                             }
                         }
-                    } catch (e) {
-                        print(e.message.toString());
-                    }
+                        this.saveData();
                 },
 
                 //this is our custom title code, this is called by our hub if a player has a custom title set
@@ -634,17 +631,19 @@ var RanksAndTitles = {
                         if (playerID === "Test") return true;
                         var i = 0,
                             j = this.Config.Ranks.length,
-                            kills = TitlesData.PlayerData[playerID].Kills;
+                            kills = TitlesData.PlayerData[playerID].Kills,
+                            oldRank = TitlesData.PlayerData[playerID].Rank;
 
                         for (i; i < j; i++) {
-                            if ((kills === this.Config.Ranks[i].killsNeeded || karma === this.Config.Ranks[i].karma)) {
-                                var customOn = true;
+                            if (this.getClosest([], kills) === this.Config.Ranks[i].killsNeeded || this.getClosest([], karma) === this.Config.Ranks[i].karma) {
                                 TitlesData.PlayerData[playerID].Rank = this.Config.Ranks[i].rank;
                             }
                         }
                     } catch (e) {
                         print(e.message.toString());
                     }
+                    this.checkPromo(oldRank, TitlesData.PlayerData[playerID].Rank, true, player);
+                    this.saveData();
                 },
 
                 /*-----------------------------------------------------------------
@@ -653,13 +652,13 @@ var RanksAndTitles = {
 
                 //This is called by our main hub if a players rank increases it will display the message "you've been promoted!"
                 //this may not exist for long and may be merged into the main hub function soon.
-                checkPromo: function(oldRank, currRank, player) {
+                checkPromo: function(oldRank, currRank, isCustom, player) {
                     var steamID = rust.UserIDFromPlayer(player);
-                    if (currRank > oldRank) {
+                    if (currRank > oldRank && !isCustom) {
                         print("Should display new message");
                         rust.SendChatMessage(player, prefix.ranks, "<color=green>" + msgs.Promoted + "</color>" + " " + TitlesData.PlayerData[steamID].Title, "0");
                     } else {
-                        return false;
+                        rust.SendChatMessage(player, prefix.ranks, "<color=green>" + msgs.Promoted + "</color>", "0");
                     }
 
                 },
