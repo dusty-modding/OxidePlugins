@@ -30,7 +30,8 @@ var BountyBoard = {
             "canSetBounties": true,
             "autoBounties": true,
             "maxBounty": 100000,
-            "targetModifier": 2
+            "targetModifier": 2,
+            "staffCollect": false
         };
 
         this.Config.Messages = {
@@ -41,8 +42,14 @@ var BountyBoard = {
             "setTrgWarn": " Made you his target! Watch out!",
             "curTar": "Your current target is: ",
             "offline": "That Player is currently offline.",
-            "btyClaim": "{plyrName} has taken the bounty of {btyAmt} from {deadPlyr}!"
+            "btyClaim": "{plyrName} has taken the bounty of {btyAmt} from {deadPlyr}!",
+            "staff": "Sorry, Staff cannot collect Bounties from slain players.".
+            "btyPlaced": "Someone placed a "
         };
+    },
+
+    OnPlayerInit: function(player) {
+        this.checkPlayerData(player);
     },
 
     findPlayerByName: function(player, args) {
@@ -79,10 +86,6 @@ var BountyBoard = {
         } catch (e) {
             print(e.message.toString());
         }
-    },
-
-    OnPlayerInit: function(player) {
-        this.checkPlayerData(player);
     },
 
     getData: function() {
@@ -138,15 +141,14 @@ var BountyBoard = {
     addBounty: function(player, cmd, args) {
         try {
         var steamID = rust.UserIDFromPlayer(player);
-        EconomyData = EconAPI.GetUserDataFromPlayer(player);
         EconomyData = EconAPI.GetUserData(steamID);
         var authLvl = player.net.connection.authLevel;
         if (this.Config.canSetBounties && !BountyData.PlayerData[steamID].isStaff) {
             if (args[0] === "add" && args.length === 3) {
-                var target = args[2].ToPlayer();
+                var target = this.findPlayerByName(args[2]);
                 var amount = args[3];
                 var targetID = rust.UserIDFromPlayer(target);
-                if (targetID.length && amount < this.Config.Settings.maxBounty) {
+                if (targetID.length && amount <= this.Config.Settings.maxBounty) {
                     if (EconomyData.Withdraw(amount)) {
                         BountyData.PlayerData[targetID].Bounty = amount;
                         rust.SendChatMessage(player, "BountyBoard", "Set " + amount + " On player: " + target, "0");
@@ -210,10 +212,6 @@ var BountyBoard = {
         }
     },
 
-    resetData: function(player, cmd, args) {
-
-    },
-
     OnEntityDeath: function(entity, hitinfo) {
         var victim = entity;
         var attacker = hitinfo.Initiator;
@@ -223,11 +221,17 @@ var BountyBoard = {
         var EconAPI = EconAPI.GetUserData(attackerID);
         if (BountyData.PlayerData[victimID] === undefined) {
             print("Data File not found for Victim, attempting build now...");
-            this.checkPlayerData(victim);
+            return this.checkPlayerData(victim);
         } else if (BountyData.PlayerData[attakerID] === undefined) {
             print("Data File not found for Attacker, attempting build now...");
-            this.checkPlayerData(attacker);
+            return this.checkPlayerData(attacker);
         }
+
+        if (BountyData.PlayerData[attackerID].isStaff && !this.Config.Settings.staffCollect) {
+            rust.SendChatMessage(player, "BountyBoard", msgs.staff, "0");
+            return false;
+        }
+
         if (BountyData.PlayerData[victimID].Bounty > 0 && BountyData.PlayerData[attackerID].Target === victim.displayName && victim.displayName !== attacker.displayName) {
             EconAPI.Deposit(BountyData.PlayerData[victimID].Bounty * targetModifier);
             var rpObj = {plyrName: attacker.displayName, btyAmt: BountyData.PlayerData[victimID].Bounty * targetModifier, deadPlyr: victim.displayName} 
