@@ -234,7 +234,7 @@ var RanksAndTitles = {
         },
 
         /*-----------------------------------------------------------------
-	                When the Player finishes loading in
+                When the Player finishes loading in
 	------------------------------------------------------------------*/
         OnPlayerInit: function(player) {
             var steamID = rust.UserIDFromPlayer(player);
@@ -242,52 +242,8 @@ var RanksAndTitles = {
             this.checkPlayerData(player, steamID);
         },
 
-
-        //Simple debugger that will place lots of information into the console for issue disputes
-        debug: function(player, cmd, args) {
-            try {
-                if (!this.Config.Settings.deBugOff) {
-                    var steamID = rust.UserIDFromPlayer(player);
-                    GroupData = data.GetData("Groups");
-                    print("----Starting Debug-----")
-                    print("--------Current Player Debug-----------");
-                    print("Player ID: " + TitlesData.PlayerData[steamID].PlayerID);
-                    print("Titles Real Name: " + TitlesData.PlayerData[steamID].RealName);
-                    print("Real name after adjustment: " + TitlesData.PlayerData[steamID].RealName.split("] ").pop())
-                    print("Groups Name: " + GroupData.PlayerData[steamID].RealName);
-                    print("Group: " + GroupData.PlayerData[steamID].Group);
-                    print("Player Title: " + TitlesData.PlayerData[steamID].Title);
-                    print("Player Rank: " + TitlesData.PlayerData[steamID].Rank);
-                    print("Player Kills: " + TitlesData.PlayerData[steamID].Kills);
-                    print("Player Deaths: " + TitlesData.PlayerData[steamID].Deaths);
-                    print("-------End Player Debug-------");
-                    print("--------Server Info-------");
-                    print("Config Version: " + this.Config.version);
-                    print("Groups Returns Data: " + GroupsAPI);
-                    print("Colors On: " + this.Config.Settings.colorSupport);
-                    print("Karma On: " + this.Config.Settings.karma);
-                    print("Use Titles Only Enabled: " + this.Config.Settings.useTitles);
-                    print("Admins turned off: " + this.Config.Settings.onAdmin);
-                    print("Number of Ranks: " + this.Config.Ranks.length);
-                    print("Number of Titles: " + this.Config.Titles.length);
-                    print("------End Server Info------");
-                    print("-----Start Function Debug-------");
-                    print("setRankTitle Responding: " + this.setRankTitle("Test"));
-                    print("setTitle Responding: " + this.setTitle("Test"));
-                    print("setCustomTitle Responding: " + this.setCustomTitle("Test"));
-                    print("-------End Function Debug--------");
-                    print("----End Debug----");
-                    rust.SendChatMessage(player, prefix.ranksandtitles, msgs.debugRan, "0");
-                } else {
-                    rust.SendChatMessage(player, prefix.ranksandtitles, msgs.debugDis, "0");
-                }
-            } catch (e) {
-                print(e.message.toString());
-            }
-        },
-
         /*-----------------------------------------------------------------
-	                All of our data handling
+                All of our data handling
 	------------------------------------------------------------------*/
         loadTitleData: function() {
             //Lets get our own data and then check to see if theres a groups data file
@@ -354,7 +310,7 @@ var RanksAndTitles = {
         },
 
         /*-----------------------------------------------------------------
-	                Our functions to find players
+                Our functions to find players
 	------------------------------------------------------------------*/
 
         //Find player by name this supports partial names, full names, and steamIDs its also case-insensitive
@@ -534,7 +490,7 @@ var RanksAndTitles = {
         },
 
         /*-----------------------------------------------------------------
-	                Get our Counts and set Ranks
+                Get our Counts and set Ranks
 	------------------------------------------------------------------*/
 
         //This is the arithmatic function to grab the closes karma number from our ranks
@@ -607,20 +563,20 @@ var RanksAndTitles = {
                 //This is our function if Titles Only mode is set to true, this function is called by our main hub and then sets titles instead
                 //of ranks to a players name. it then send this data back to our data file to be saved
                 setTitle: function(playerID, player) {
-                        if (playerID === "Test") return true;
-                        var i = 0,
-                            j = this.Config.Titles.length,
-                            colorOn = this.Config.colorSupport,
-                            useTitles = this.Config.Settings.useTitles;
+                    if (playerID === "Test") return true;
+                    var i = 0,
+                        j = this.Config.Titles.length,
+                        colorOn = this.Config.colorSupport,
+                        useTitles = this.Config.Settings.useTitles;
 
-                        for (i; i < j; i++) {
-                            if (useTitles) {
-                                if (TitlesData.PlayerData[playerID].Title === this.Config.Titles[i].title || TitlesData.PlayerData[playerID].Title === "") {
-                                    TitlesData.PlayerData[playerID].Title = this.Config.Titles[i].title;
-                                }
+                    for (i; i < j; i++) {
+                        if (useTitles) {
+                            if (TitlesData.PlayerData[playerID].Title === this.Config.Titles[i].title || TitlesData.PlayerData[playerID].Title === "") {
+                                TitlesData.PlayerData[playerID].Title = this.Config.Titles[i].title;
                             }
                         }
-                        this.saveData();
+                    }
+                    this.saveData();
                 },
 
                 //this is our custom title code, this is called by our hub if a player has a custom title set
@@ -647,8 +603,8 @@ var RanksAndTitles = {
                 },
 
                 /*-----------------------------------------------------------------
-	                Check Data, and Updates
-	------------------------------------------------------------------*/
+                            Check Data, and Updates
+                ------------------------------------------------------------------*/
 
                 //This is called by our main hub if a players rank increases it will display the message "you've been promoted!"
                 //this may not exist for long and may be merged into the main hub function soon.
@@ -707,8 +663,8 @@ var RanksAndTitles = {
                 },
 
                 /*-----------------------------------------------------------------
-	                Grab Karma and Set Karma
-	------------------------------------------------------------------*/
+            Grab Karma and Set Karma
+------------------------------------------------------------------*/
 
                 //A simple function to allow our users to set custom karma modifiers for each rank this searches our config file
                 //for karmaModifier to the matching title of the killed players ID it then send the found number back to the death function
@@ -755,8 +711,8 @@ var RanksAndTitles = {
                 },
 
                 /*-----------------------------------------------------------------
-	                  Check for Deaths
-	  ------------------------------------------------------------------*/
+              Check for Deaths
+------------------------------------------------------------------*/
 
                 //This is our death function this is the primary function, if this breaks. Everything breaks
                 //it has several fail safe checks to make sure data is present, and make sure it isn't corrupt
@@ -822,8 +778,8 @@ var RanksAndTitles = {
                 },
 
                 /*-----------------------------------------------------------------
-	                Extra Commands
-	------------------------------------------------------------------*/
+            Extra Commands
+------------------------------------------------------------------*/
                 //These are our series of commands that are useable and called on by our Switch above. Each one
                 //speaks for itself and should be easy to tell what it does.
 
@@ -894,12 +850,13 @@ var RanksAndTitles = {
                 },
 
                 /*-----------------------------------------------------------------
-	                Chat Handling(New)
-	------------------------------------------------------------------*/
+            Chat Handling(New)
+------------------------------------------------------------------*/
 
                 //This function is used by playerchat to grab the correct colors for the rank, or title used by the player
                 //it will then send back the found color for the chat function to use.
                 getColor: function(steamID) {
+                    //This is for custom titles being set with ranks may be removed with recent fixes
                     for (var i = 0; i < this.Config.Titles.length; i++) {
                         if (TitlesData.PlayerData[steamID].Title === this.Config.Titles[i].title) {
                             var color = this.Config.Titles[i].Color;
@@ -908,7 +865,7 @@ var RanksAndTitles = {
                     }
 
 
-                    if (!this.Config.Settings.useTitle) {
+                    if (!this.Config.Settings.useTitles) {
                         for (var i = 0; i < this.Config.Ranks.length; i++) {
                             if (TitlesData.PlayerData[steamID].Title === this.Config.Ranks[i].title) {
                                 var color = this.Config.Ranks[i].Color;
@@ -925,6 +882,15 @@ var RanksAndTitles = {
                     }
                 },
 
+                getTitle: function(steamID) {
+                    var title = TitlesData.PlayerData[steamID].Title || "";
+                    if (title !== "") {
+                        return "[" + title + "]"
+                    } else {
+                        return false;
+                    }
+                },
+
                 //Our char function is called whenever a chat message is sent, it grabs a slew of information including, player files, the message
                 //the player title and realname, and the steamId, using all of this it checks to make sure the chat wasn't empty or a command
                 //then if checks if color support is activated if so it will sent the chat with the colored title
@@ -932,24 +898,72 @@ var RanksAndTitles = {
                 //We have to make sure we return false afterwards or else we will get double chat messages with every chat sent.
                 OnPlayerChat: function(arg) {
                     try {
-                        var global = importNamespace("");
-                        var player = arg.connection.player;
-                        var msg = arg.GetString(0, "text");
-                        var steamID = rust.UserIDFromPlayer(player)
-                        var title = TitlesData.PlayerData[steamID].Title,
-                            realName = TitlesData.PlayerData[steamID].RealName;
-                        if (msg.substring(1, 1) === "/" || msg === "") return;
-                        if (this.Config.Settings.colorSupport) {
-                            var color = this.getColor(steamID);
-                            global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=#1bd228>" + player.displayName + "</color>" + " <color=" + color + ">[" + title + "]</color> " + msg);
-                            return false;
-                        } else if (!this.Config.Settings.colorSupport) {
-                            global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=#1bd228>" + player.displayName + " [" + title + "] " + "</color>" + msg);
-                            return false;
+                        if (!chatHandler) {
+                            var global = importNamespace("");
+                            var player = arg.connection.player;
+                            var msg = arg.GetString(0, "text");
+                            var steamID = rust.UserIDFromPlayer(player)
+                            var title = TitlesData.PlayerData[steamID].Title,
+                                realName = TitlesData.PlayerData[steamID].RealName;
+                            if (msg.substring(1, 1) === "/" || msg === "") return;
+                            if (this.Config.Settings.colorSupport) {
+                                var color = this.getColor(steamID);
+                                global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=#1bd228>" + player.displayName + "</color>" + " <color=" + color + ">[" + title + "]</color> " + msg);
+                                return false;
+                            } else if (!this.Config.Settings.colorSupport) {
+                                global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=#1bd228>" + player.displayName + " [" + title + "] " + "</color>" + msg);
+                                return false;
 
+                            }
+
+                        } else {
+                            return null;
                         }
                     } catch (e) {
                         print(e.message.toString());
                     }
-                }
+                },
+
+                //Simple debugger that will place lots of information into the console for issue disputes
+                debug: function(player, cmd, args) {
+                    try {
+                        if (!this.Config.Settings.deBugOff) {
+                            var steamID = rust.UserIDFromPlayer(player);
+                            GroupData = data.GetData("Groups");
+                            print("----Starting Debug-----")
+                            print("--------Current Player Debug-----------");
+                            print("Player ID: " + TitlesData.PlayerData[steamID].PlayerID);
+                            print("Titles Real Name: " + TitlesData.PlayerData[steamID].RealName);
+                            print("Real name after adjustment: " + TitlesData.PlayerData[steamID].RealName.split("] ").pop())
+                            print("Groups Name: " + GroupData.PlayerData[steamID].RealName);
+                            print("Group: " + GroupData.PlayerData[steamID].Group);
+                            print("Player Title: " + TitlesData.PlayerData[steamID].Title);
+                            print("Player Rank: " + TitlesData.PlayerData[steamID].Rank);
+                            print("Player Kills: " + TitlesData.PlayerData[steamID].Kills);
+                            print("Player Deaths: " + TitlesData.PlayerData[steamID].Deaths);
+                            print("-------End Player Debug-------");
+                            print("--------Server Info-------");
+                            print("Config Version: " + this.Config.version);
+                            print("Groups Returns Data: " + GroupsAPI);
+                            print("Colors On: " + this.Config.Settings.colorSupport);
+                            print("Karma On: " + this.Config.Settings.karma);
+                            print("Use Titles Only Enabled: " + this.Config.Settings.useTitles);
+                            print("Admins turned off: " + this.Config.Settings.onAdmin);
+                            print("Number of Ranks: " + this.Config.Ranks.length);
+                            print("Number of Titles: " + this.Config.Titles.length);
+                            print("------End Server Info------");
+                            print("-----Start Function Debug-------");
+                            print("setRankTitle Responding: " + this.setRankTitle("Test"));
+                            print("setTitle Responding: " + this.setTitle("Test"));
+                            print("setCustomTitle Responding: " + this.setCustomTitle("Test"));
+                            print("-------End Function Debug--------");
+                            print("----End Debug----");
+                            rust.SendChatMessage(player, prefix.ranksandtitles, msgs.debugRan, "0");
+                        } else {
+                            rust.SendChatMessage(player, prefix.ranksandtitles, msgs.debugDis, "0");
+                        }
+                    } catch (e) {
+                        print(e.message.toString());
+                    }
+                },
         }
