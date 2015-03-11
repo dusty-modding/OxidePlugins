@@ -92,7 +92,7 @@ var UniAPI = {
 
         if (this.Config.fees) {
             var diff = amt * this.Config.fees;
-            amt = diff;
+            amt = amt - diff;
         }
 
         if ((UniAPI.PlayerData[sender[1]] !== undefined && UniAPI.PlayerData[receiver[1]] !== undefined)) {
@@ -263,7 +263,7 @@ var UniAPI = {
 
         if (this.Config.fees) {
             var diff = getAmount * this.Config.fees;
-            getAmount = diff;
+            getAmount = getAmount - diff;
         }
 
         if (getplayer && getAmount) {
