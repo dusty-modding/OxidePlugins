@@ -1,7 +1,7 @@
 var RanksAndTitles = {
         Title: "Ranks And Titles",
         Author: "Killparadise",
-        Version: V(1, 2, 0),
+        Version: V(1, 3, 1),
         ResourceId: 830,
         Url: "http://oxidemod.org/resources/ranks-and-titles.830/",
         HasConfig: true,
@@ -9,6 +9,12 @@ var RanksAndTitles = {
             global = importNamespace("");
             UnityEngine = importNamespace("UnityEngine");
             GroupsAPI = plugins.Find('RotAG-Groups');
+            chatHandler = plugins.Find('chathandler');
+            if (chatHandler) {
+              chatHandler = true;
+            } else {
+              chatHandler = false;
+            }
             if (GroupsAPI) {
                 GroupsAPI = true;
             } else {
@@ -26,7 +32,7 @@ var RanksAndTitles = {
         },
 
         checkConfig: function() {
-            if (this.Config.version !== "1.3") {
+            if (this.Config.version !== "1.4") {
                 print("[RanksAndTitles] Config outdated... Now Updating...");
                 this.LoadDefaultConfig();
                 this.SaveConfig();
@@ -35,14 +41,21 @@ var RanksAndTitles = {
 
         LoadDefaultConfig: function() {
             this.Config.authLevel = 2;
-            this.Config.version = "1.3";
+            this.Config.version = "1.4";
             this.Config.Settings = {
                 "deBugOff": true,
                 "karma": true,
                 "colorSupport": true,
                 "useTitles": false,
-                "noAdmin": false
+                "noAdmin": false,
+                "usePunishSystem": true
             };
+            this.Config.PunishTiers = [{
+                "low": 2,
+                "Med": 5,
+                "high": 10,
+                "custom": 0
+            }]
             this.Config.Titles = [{
                 "authLvl": 0,
                 "title": "Player",
@@ -213,11 +226,19 @@ var RanksAndTitles = {
                 "adminsOff": "Admins rankings turned off.",
                 "badSyntaxRemove": "Incorrect Syntax please use /rt remove playername",
                 "help": "/rt help - Get RanksAndTitles Command Help",
-                "badSyntaxFix": "Invalid syntax please use /rt fix playername",
+                "badSyntaxKarma": "Invalid syntax please use /rt karma",
                 "clearData": "Server Data Wiped...",
                 "noData": "No Player Data Found... Attempting to Build.",
                 "debugDis": "Debug is currently disabled.",
-                "debugRan": "Ran Debug! Thanks!"
+                "debugRan": "Ran Debug! Thanks!",
+                "Demoted": "You've been demoted!",
+                "setKarma": "Karma successfully set!",
+                "setKarma0": "You can only use numbers to set a players karma.",
+                "plyrKarma": " Karma level is: ",
+                "checkFailed": "Check failed..",
+                "addKarma": "Karma added to player successfully",
+                "removeKarma": "Karma removed from player successfully",
+                "punishMsg": "You've killed a {rankName} you've {gOrl} an extra {karma} Karma!"
             };
             this.Config.Help = [
                 "/rt - display your rank or title",
@@ -229,7 +250,11 @@ var RanksAndTitles = {
                 "/rt set playername title - Sets a custom title to the selected player, this must be a title in config (NOT RANK)",
                 "/rt remove playername - removes a given players custom title, and sets them back into the ransk tree",
                 "/rt switch - switch titles only mode on and off, this will use config title automatically without Ranks system",
-                "/rt noadmin - Removes admins (auth 2 or higher) from ranks system no kills, or ranks will be given."
+                "/rt noadmin - Removes admins (auth 2 or higher) from ranks system no kills, or ranks will be given.",
+                "/rt karma set playername karma - set a selected players karma level",
+                "/rt karma check playername - check the selected players karma",
+                "/rt karma add playername karma - adds the entered amount of karma to the selected player",
+                "/rt karma rem playername karma - removes the entered amount of karma from the selected player"
             ]
         },
 
@@ -253,7 +278,6 @@ var RanksAndTitles = {
             GroupData = data.GetData("Groups");
             GroupData = GroupData || {};
         },
-
 
         checkPlayerData: function(player, steamID) {
             //Okay lets check our data file for player data
@@ -415,9 +439,7 @@ var RanksAndTitles = {
                         break;
                     case "karma":
                         if (authLvl >= this.Config.authLevel && args.length >= 1 && !useTitles) {
-                            rust.SendChatMessage(player, prefix.ranksandtitles, "Command currently disabled.", "0");
-                            return false;
-                            //this.setKarma(player, cmd, args);
+                            this.handleKarma(player, cmd, args);
                         } else if (authLvl < this.Config.authLevel) {
                             rust.SendChatMessage(player, prefix.ranks, msgs.noPerms, "0");
                             return false;
@@ -489,9 +511,9 @@ var RanksAndTitles = {
             }
         },
 
-        /*-----------------------------------------------------------------
-                Get our Counts and set Ranks
-	------------------------------------------------------------------*/
+                /*-----------------------------------------------------------------
+                            Get our Counts and set Ranks
+	           ------------------------------------------------------------------*/
 
         //This is the arithmatic function to grab the closes karma number from our ranks
         getClosest: function(arr, closestTo) {
@@ -500,9 +522,9 @@ var RanksAndTitles = {
 
                 for (var i = 0; i < arr.length; i++) {
                     if (closestTo >= 0) {
-                        if (arr[i] <= closestTo && arr[i] > 0) closest = arr[i];
+                        if (arr[i] <= closestTo && arr[i] >= 0) closest = arr[i];
                     } else if (closestTo <= 0) {
-                        if (arr[i] >= closestTo && arr[i] < 0) closest = arr[i];
+                        if (arr[i] >= closestTo && arr[i] <= 0) closest = arr[i];
                     }
                 }
             }
@@ -511,14 +533,31 @@ var RanksAndTitles = {
 
         getRanksArray: function() {
             var temp = [];
+
             for (var i = 0; i < this.Config.Ranks.length; i++) {
                 temp.push(this.Config.Ranks[i].karma);
-            } else {
-                if (typeof Ranks[i].killsNeeded !== "string") {
-                    temp.push(Ranks[i].killsNeeded);
+                if (typeof this.Config.Ranks[i].killsNeeded !== "string") {
+                    temp.push(this.Config.Ranks[i].killsNeeded);
                 }
+              }
                 return temp;
             },
+
+            /*this.Config.PunishTiers = [{
+                "low": 2,
+                "Med": 5,
+                "high": 10,
+                "custom": 0
+            }]*/
+
+        checkPunish: function(killerID, victimID) {
+            var multiplier = this.Config.Settings.punishMultiplier;
+            if ((TitlesData.PlayerData[killerID].Rank > 0 && TitlesData.PlayerData[victimID].Rank >= 0) || (TitlesData.PlayerData[killerID].Rank < 0 && TitlesData.PlayerData[victimID].Rank < 0)) {
+                if (TitlesData.PlayerData[killerID].Rank < 2) {
+                    
+                }
+            }
+        },
 
             //this is our main hub all player data hits this function and is then sent else where if need be
             //or it will continue through the process. This is the default ranks function
@@ -543,6 +582,11 @@ var RanksAndTitles = {
                         if (useTitles) {
                             return this.setTitle(playerID, player);
                         }
+                      for (var ii = 0; ii < this.Config.Titles.length; ii++) {
+                        if (TitlesData.PlayerData[playerID].Title === this.Config.Titles[ii].title) {
+                          return false;
+                        }
+                      }
 
                         for (i; i < j; i++) {
                             if (karmaOn && this.getClosest([], karma) === this.Config.Ranks[i].karma) {
@@ -579,46 +623,187 @@ var RanksAndTitles = {
                     this.saveData();
                 },
 
-                //this is our custom title code, this is called by our hub if a player has a custom title set
-                //IE the server admin used /rt set playername title, this makes sure if the player ranks up he doesn't get processed
-                //through our default code and keeps the custom title.
-                setCustomTitle: function(playerID, player) {
-                    try {
-                        if (playerID === "Test") return true;
-                        var i = 0,
-                            j = this.Config.Ranks.length,
-                            kills = TitlesData.PlayerData[playerID].Kills,
-                            oldRank = TitlesData.PlayerData[playerID].Rank;
-
-                        for (i; i < j; i++) {
-                            if (this.getClosest([], kills) === this.Config.Ranks[i].killsNeeded || this.getClosest([], karma) === this.Config.Ranks[i].karma) {
-                                TitlesData.PlayerData[playerID].Rank = this.Config.Ranks[i].rank;
-                            }
-                        }
-                    } catch (e) {
-                        print(e.message.toString());
-                    }
-                    this.checkPromo(oldRank, TitlesData.PlayerData[playerID].Rank, true, player);
-                    this.saveData();
-                },
-
                 /*-----------------------------------------------------------------
-                            Check Data, and Updates
+                            Check for promotions
                 ------------------------------------------------------------------*/
 
                 //This is called by our main hub if a players rank increases it will display the message "you've been promoted!"
                 //this may not exist for long and may be merged into the main hub function soon.
                 checkPromo: function(oldRank, currRank, isCustom, player) {
                     var steamID = rust.UserIDFromPlayer(player);
-                    if (currRank > oldRank && !isCustom) {
-                        print("Should display new message");
+                    if (!isCustom && currRank > oldRank) {
                         rust.SendChatMessage(player, prefix.ranks, "<color=green>" + msgs.Promoted + "</color>" + " " + TitlesData.PlayerData[steamID].Title, "0");
-                    } else {
-                        rust.SendChatMessage(player, prefix.ranks, "<color=green>" + msgs.Promoted + "</color>", "0");
+                    } else if (!isCustom && currRank < oldRank) {
+                        rust.SendChatMessage(player, prefix.ranks, "<color=red>" + msgs.Demoted + "</color>", "0");
                     }
 
                 },
 
+                /*-----------------------------------------------------------------
+                                    Grab Karma and Karma Commands
+                ------------------------------------------------------------------*/
+
+                //A simple function to allow our users to set custom karma modifiers for each rank this searches our config file
+                //for karmaModifier to the matching title of the killed players ID it then send the found number back to the death function
+                //to add or subtract the appropriate karma.
+                getKarma: function(victimID) {
+                    var i = 0,
+                        j = this.Config.Ranks.length;
+                    for (i; i < j; i++) {
+                        if (this.Config.Ranks[i].title === TitlesData.PlayerData[victimID].Title) {
+                            return this.Config.Ranks[i].karmaModifier;
+                        } else {
+                            return 1;
+                        }
+                    }
+                },
+
+                //This function will be used for our command karma I am still thinking of the system
+                //so it is disabled for now.
+                karmaCmd: function(player, cmd, args) {
+                    var steamID = rust.UserIDFromPlayer(player),
+                    authLvl = player.net.connection.authLevel;
+                    //Structure: /rt karma set playername karma
+                    // /rt karma check playername
+                    // /rt karma add playername karma
+                    // /rt karma rem playername karma
+                    if (args.length >= 2 && authLvl >= this.Config.authLevel) {
+                        switch(arg[0]) {
+                            case "set":
+                                this.setKarma(player, cmd, args);
+                                break;
+                            case "check":
+                                this.checkKarma(player, cmd, args);
+                                break;
+                            case "add":
+                                this.addKarma(player, cmd, args);
+                                break;
+                            case "rem":
+                                this.removeKarma(player, cmd, args);
+                                break;
+                            default:
+                                rust.SendChatMessage(player, prefix.ranks, msgs.badSyntaxKarma, "0");
+                                break;
+                        }
+                    } else if (authLvl < this.Config.authLevel) {
+                        rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
+                    } else {
+                        rust.SendChatMessage(player, prefix.ranks, msgs.badSyntaxKarma, "0");
+                    }
+                },
+
+                setKarma: function(player, cmd, args) {
+                    var getPlayer = this.findPlayerByName(args[2]);
+                    var karmaAmt = Number(args[3]);
+                    if (getPlayer && typeof (karmaAmt) === "number") {
+                        TitlesData.PlayerData[getPlayer[1]].Karma = karmaAmt;
+                        this.savedata();
+                        rust.SendChatMessage(player, prefix.ranks, msgs.setKarma, "0");
+                    } else {
+                        rust.SendChatMessage(player, prefix.ranks, msgs.setKarma0, "0");
+                    }
+                },
+
+                checkKarma: function(player, cmd, args) {
+                    var getPlayer = this.findPlayerByName(args[2]);
+                    if (getPlayer) {
+                        rust.SendChatMessage(player, prefix.ranks, getplayer[0].displayName + msgs.plyrKarma + TitlesData.PlayerData[getPlayer[1]].Karma, "0");
+                    } else {
+                        rust.SendChatMessage(player, prefix.ranks, msgs.checkFailed, "0");
+                    }
+                },
+
+                addKarma: function(player, cmd, args) {
+                    var getPlayer = this.findPlayerByName(args[2]);
+                    var karmaAmt = Number(args[3]);
+                    if (typeof (karmaAmt) === "number") {
+                        TitlesData.PlayerData[getPlayer[1]].Karma += karmaAmt;
+                        this.saveData();
+                        rust.SendChatMessage(player, prefix.ranks, msgs.addKarma, "0");
+                    }
+                },
+
+                removeKarma: function(player, cmd, args) {
+                    var getPlayer = this.findPlayerByName(args[2]);
+                    var karmaAmt = Number(args[3]);
+                    if (typeof (karmaAmt) === "number") {
+                        TitlesData.PlayerData[getPlayer[1]].Karma -= karmaAmt;
+                        this.saveData();
+                        rust.SendChatMessage(player, prefix.ranks, msgs.addKarma, "0");
+                    }
+                },
+
+                /*-----------------------------------------------------------------
+                                    Check for Deaths
+                ------------------------------------------------------------------*/
+
+                //This is our death function this is the primary function, if this breaks. Everything breaks
+                //it has several fail safe checks to make sure data is present, and make sure it isn't corrupt
+                //if so it stops the check and tells the admin about the problem needing to be addressed
+                //Hopefully soon this function will maintain itself 100% automatically it's due for a good re write to optimize its functionality
+                //It then assigns ids, makes sure everyone involved was players, makes sure which system to use
+                //and then sends appropriate data where it needs to go, it then runs the players through the
+                //KDR and ranks functions (remember our hub?) this process may also change during the re write.
+                OnEntityDeath: function(entity, hitinfo) {
+                    try {
+                        var victim = entity,
+                            attacker = hitinfo.Initiator;
+                        var useTitles = this.Config.Settings.useTitles
+
+                        if (victim.ToPlayer() && attacker.ToPlayer() && !useTitles && victim.displayName !== attacker.displayName) {
+                            var killer = attacker.ToPlayer(),
+                                killerID = rust.UserIDFromPlayer(killer),
+                                victimID = rust.UserIDFromPlayer(victim);
+
+                            if (!TitlesData.PlayerData[killerID]) {
+                                print("Killer does not have registered Data in Data File.");
+                                print("Attempting to create killer Data file...");
+                                this.checkPlayerData(killer, killerID);
+                            } else if (!TitlesData.PlayerData[victimID] && victim.IsConnected()) {
+                                print("Victim does not have registered Data in Data File");
+                                print("Attempting to create Victim Data File...");
+                                this.checkPlayerData(victim, victimID);
+                            } else if (TitlesData.PlayerData[killerID] && TitlesData.PlayerData[killerID].Kills === NaN) {
+                                print("Data is Corrupt, Please find: " + TitlesData.PlayerData[killerID] + " And reset his/her data.");
+                            } else if (TitlesData.PlayerData[victimID] && TitlesData.PlayerData[victimID].Deaths === NaN && victim.Isconnected()) {
+                                print("Data is Corrupt, Please find: " + TitlesData.PlayerData[victimID] + " And reset his/her data.");
+                            }
+
+                            var karmaOn = this.Config.Settings.karma,
+                                karma = TitlesData.PlayerData[killerID].Karma;
+                            if (karmaOn && TitlesData.PlayerData[victimID].Karma >= 0) {
+                                TitlesData.PlayerData[killerID].Kills += 1;
+                                TitlesData.PlayerData[victimID].Deaths += 1;
+                                TitlesData.PlayerData[killerID].Karma -= (this.getKarma(victimID) - this.checkPunish(killerID, victimID));
+                                rust.SendChatMessage(killer, prefix.ranks, msgs.loseKarma + " (" + this.getKarma(victimID) + ")", "0");
+                            } else if (karmaOn && TitlesData.PlayerData[victimID].Karma < 0) {
+                                TitlesData.PlayerData[killerID].Kills += 1;
+                                TitlesData.PlayerData[victimID].Deaths += 1;
+                                TitlesData.PlayerData[killerID].Karma += (this.getKarma(victimID) + this.checkPunish(killerID, victimID));
+                                rust.SendChatMessage(killer, prefix.ranks, msgs.gainKarma + " (" + this.getKarma(victimID) + ")", "0");
+                            } else {
+                                TitlesData.PlayerData[killerID].Kills += 1;
+                                TitlesData.PlayerData[victimID].Deaths += 1;
+                            }
+                            this.setRankTitle(killerID, killer);
+                            this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
+                            this.updateKDR(TitlesData.PlayerData[killerID].Kills, TitlesData.PlayerData[killerID].Deaths, killer);
+                        } else if (victim.ToPlayer() && victim.displayName === attacker.displayName) {
+                            var victimID = rust.UserIDFromPlayer(victim);
+                            TitlesData.PlayerData[victimID].Deaths += 1;
+                            this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
+                        } else {
+                            return false;
+                        }
+                    } catch (e) {
+                        print(e.message.toString());
+                    }
+                },
+
+                /*-----------------------------------------------------------------
+                                     Command Handling
+                ------------------------------------------------------------------*/
+                
                 //this function is caused by our death checker, this sends data to our data file to keep track of a KDR for the
                 //player normally it is called twice each kill (called at the same time) luckily it processes and handles the
                 //Ids efficiently so it knows where to send what.
@@ -661,33 +846,7 @@ var RanksAndTitles = {
                         return false;
                     }
                 },
-
-                /*-----------------------------------------------------------------
-            Grab Karma and Set Karma
-------------------------------------------------------------------*/
-
-                //A simple function to allow our users to set custom karma modifiers for each rank this searches our config file
-                //for karmaModifier to the matching title of the killed players ID it then send the found number back to the death function
-                //to add or subtract the appropriate karma.
-                getKarma: function(playerID) {
-                    var i = 0,
-                        j = this.Config.Ranks.length;
-                    for (i; i < j; i++) {
-                        if (this.Config.Ranks[i].title === TitlesData.PlayerData[playerID].Title) {
-                            return this.Config.Ranks[i].karmaModifier;
-                        } else {
-                            return 1;
-                        }
-                    }
-                },
-
-                //This function will be used for our command karma I am still thinking of the system
-                //so it is disabled for now.
-                setKarma: function(player, cmd, args) {
-                    rust.SendChatMessage(player, prefix.ranks, "Command currently disabled.", "0");
-                    return false;
-                },
-
+                                
                 //This function is used by the remove command, when called it will find the target player
                 //grab his file, and then set his title to nothing. It will then run him through the hub function
                 //to set his new ranks title instead. This is so if a player with a custom title wishes to
@@ -710,76 +869,6 @@ var RanksAndTitles = {
                     }
                 },
 
-                /*-----------------------------------------------------------------
-              Check for Deaths
-------------------------------------------------------------------*/
-
-                //This is our death function this is the primary function, if this breaks. Everything breaks
-                //it has several fail safe checks to make sure data is present, and make sure it isn't corrupt
-                //if so it stops the check and tells the admin about the problem needing to be addressed
-                //Hopefully soon this function will maintain itself 100% automatically it's due for a good re write to optimize its functionality
-                //It then assigns ids, makes sure everyone involved was players, makes sure which system to use
-                //and then sends appropriate data where it needs to go, it then runs the players through the
-                //KDR and ranks functions (remember our hub?) this process may also change during the re write.
-                OnEntityDeath: function(entity, hitinfo) {
-                    try {
-                        var victim = entity,
-                            attacker = hitinfo.Initiator;
-                        var useTitles = this.Config.Settings.useTitles
-
-                        if (victim.ToPlayer() && attacker.ToPlayer() && !useTitles && victim.displayName !== attacker.displayName) {
-                            var killer = attacker.ToPlayer(),
-                                killerID = rust.UserIDFromPlayer(killer),
-                                victimID = rust.UserIDFromPlayer(victim);
-
-                            if (!TitlesData.PlayerData[killerID]) {
-                                print("Killer does not have registered Data in Data File.");
-                                print("Attempting to create killer Data file...");
-                                this.checkPlayerData(killer, killerID);
-                            } else if (!TitlesData.PlayerData[victimID] && victim.IsConnected()) {
-                                print("Victim does not have registered Data in Data File");
-                                print("Attempting to create Victim Data File...");
-                                this.checkPlayerData(victim, victimID);
-                            } else if (TitlesData.PlayerData[killerID] && TitlesData.PlayerData[killerID].Kills === NaN) {
-                                print("Data is Corrupt, Please find: " + TitlesData.PlayerData[killerID] + " And reset his/her data.");
-                            } else if (TitlesData.PlayerData[victimID] && TitlesData.PlayerData[victimID].Deaths === NaN && victim.Isconnected()) {
-                                print("Data is Corrupt, Please find: " + TitlesData.PlayerData[victimID] + " And reset his/her data.");
-                            }
-
-                            var karmaOn = this.Config.Settings.karma,
-                                karma = TitlesData.PlayerData[killerID].Karma;
-                            if (karmaOn && TitlesData.PlayerData[victimID].Karma >= 0) {
-                                TitlesData.PlayerData[killerID].Kills += 1;
-                                TitlesData.PlayerData[victimID].Deaths += 1;
-                                TitlesData.PlayerData[killerID].Karma -= this.getKarma(victimID);
-                                rust.SendChatMessage(killer, prefix.ranks, msgs.loseKarma + " (" + this.getKarma(victimID) + ")", "0");
-                            } else if (karmaOn && TitlesData.PlayerData[victimID].Karma < 0) {
-                                TitlesData.PlayerData[killerID].Kills += 1;
-                                TitlesData.PlayerData[victimID].Deaths += 1;
-                                TitlesData.PlayerData[killerID].Karma += this.getKarma(victimID);
-                                rust.SendChatMessage(killer, prefix.ranks, msgs.gainKarma + " (" + this.getKarma(victimID) + ")", "0");
-                            } else {
-                                TitlesData.PlayerData[killerID].Kills += 1;
-                                TitlesData.PlayerData[victimID].Deaths += 1;
-                            }
-                            this.setRankTitle(killerID, killer);
-                            this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
-                            this.updateKDR(TitlesData.PlayerData[killerID].Kills, TitlesData.PlayerData[killerID].Deaths, killer);
-                        } else if (victim.ToPlayer() && victim.displayName === attacker.displayName) {
-                            var victimID = rust.UserIDFromPlayer(victim);
-                            TitlesData.PlayerData[victimID].Deaths += 1;
-                            this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
-                        } else {
-                            return false;
-                        }
-                    } catch (e) {
-                        print(e.message.toString());
-                    }
-                },
-
-                /*-----------------------------------------------------------------
-            Extra Commands
-------------------------------------------------------------------*/
                 //These are our series of commands that are useable and called on by our Switch above. Each one
                 //speaks for itself and should be easy to tell what it does.
 
@@ -850,8 +939,8 @@ var RanksAndTitles = {
                 },
 
                 /*-----------------------------------------------------------------
-            Chat Handling(New)
-------------------------------------------------------------------*/
+                                        Chat Handling(New)
+                ------------------------------------------------------------------*/
 
                 //This function is used by playerchat to grab the correct colors for the rank, or title used by the player
                 //it will then send back the found color for the chat function to use.

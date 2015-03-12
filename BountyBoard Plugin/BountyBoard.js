@@ -126,10 +126,10 @@ var BountyBoard = {
                 if (authLvl >= this.Config.authLevel) {
                     this.resetData(player, cmd, args);
                 } else if (authLvl < this.Config.authLevel) {
-                    rust.SendChatMessage(player, "Titles", msgs.noPerms, "0");
+                    rust.SendChatMessage(player, "BountyBoard", msgs.noPerms, "0");
                     return false;
                 } else {
-                    rust.SendChatMessage(player, "Titles", msgs.badSyntaxRank, "0");
+                    rust.SendChatMessage(player, "BountyBoard", msgs.badSyntaxRank, "0");
                     return false;
                 }
             default:
