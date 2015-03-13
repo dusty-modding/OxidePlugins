@@ -28,7 +28,7 @@ var RanksAndTitles = {
         OnServerInitialized: function() {
             msgs = this.Config.Messages;
             prefix = this.Config.Prefix;
-            this.checkConfig();
+            this.smartConfig();
         },
 
         checkConfig: function() {
@@ -52,14 +52,15 @@ var RanksAndTitles = {
         },
 
         loadSmartConfig: function(changed) {
-            print("Re-applying Titles, Ranks, and Punish Modifier Data now.")
+            print("Grabing Data...")
             var oldData = [],
                 newData = [];
             for (var key in this.Config) {
                 if (this.Config[key] === this.Config.PunishTiers || this.Config[key] === this.Config.Titles || this.Config[key] === this.Config.Ranks) {
                     oldData.push(this.Config[key]);
-                if ((this.Config[key] === this.Config.Messages && this.Config.Message.Messages) || (this.Config[key] === this.Config.Prefix && this.Config.Prefix.Prefixes))
-                 || (this.Config[key] === this.Config.Settings && this.Config.Settings.Settings)) {
+                if ((this.Config[key] === this.Config.Messages && this.Config.Message.Messages) 
+                    || (this.Config[key] === this.Config.Prefix && this.Config.Prefix.Prefixes)
+                    || (this.Config[key] === this.Config.Settings && this.Config.Settings.Settings)) {
                     oldData.push(this.Config[key]);
                 }
                 } else {
@@ -67,12 +68,14 @@ var RanksAndTitles = {
                 }
             }
             if (oldData.length > 0) {
+                print("Replacing Old Data with default...")
                 this.LoadDefaultConfig();
             }
 
             if (this.Config.PunishTiers !== undefined && this.Config.Titles !== undefined && this.Config.Ranks !== undefined) {
                 for (var i = 0; i < oldData.length; i++) {
                     if (oldData[i].length === 1) {
+                    print("Updating: " + oldData[i]);
                         this.Config.PunishTiers = oldData[i];
                     } else if (oldData[i].hasOwnProperty("authLvl")) {
                         this.Config.Titles = oldData[i];
@@ -86,6 +89,7 @@ var RanksAndTitles = {
                         this.Config.Settings = oldData[i];
                     }
                 }
+            }
                 this.SaveConfig();
             },
 
@@ -100,7 +104,8 @@ var RanksAndTitles = {
                         "useTitles": false,
                         "noAdmin": false,
                         "usePunishSystem": true,
-                        "chatNameColor": "#1bd228"
+                        "chatNameColor": "#1bd228",
+                        "staffchatNameColor": "#1bd228"
                     };
                     this.Config.PunishTiers = [{
                         "lowRankRange": [0, 2],
@@ -1059,7 +1064,8 @@ var RanksAndTitles = {
                     try {
                         if (!chatHandler) {
                             var global = importNamespace("");
-                            var player = arg.connection.player;
+                            var player = arg.connection.player,
+                                authLevel = player.net.connection.authLevel;
                             var msg = arg.GetString(0, "text");
                             var steamID = rust.UserIDFromPlayer(player)
                             var title = TitlesData.PlayerData[steamID].Title,
@@ -1072,14 +1078,18 @@ var RanksAndTitles = {
                                 global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=" + this.Config.Settings.chatNameColor + ">" + player.displayName + "</color>" + " <color=" + color + ">[" + title + "]</color> " + msg);
                                 return false;
                             } else if (!colorOn && !hidden) {
-                                global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=" + this.Config.Settings.chatNameColor + "> [" + title + "] " + "</color>" + msg);
+                                global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=" + this.Config.Settings.chatNameColor + ">" + player.displayName + " [" + title + "] " + "</color>" + msg);
                                 return false;
-
                             } else if (hidden) {
-                                global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=" + this.Config.Settings.chatNameColor + ">" + msg);
+                                global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=" + this.Config.Settings.chatNameColor + ">" + player.displayName + "</color>" + msg);
+                                return false;
+                            } else if (authLevel >= 1 && colorOn) {
+                                global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=" + this.Config.Settings.staffchatNameColor + ">" + player.displayName + "</color>" + " <color=" + color + ">[" + title + "]</color> " + msg);
+                                return false;
+                            } else if (authLevel >= 1 && !colorOn) {
+                                global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=" + this.Config.Settings.staffchatNameColor + ">" + player.displayName + " [" + title + "] " + "</color>" + msg);
                                 return false;
                             }
-
                         } else {
                             return null;
                         }
