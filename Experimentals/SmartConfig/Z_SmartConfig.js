@@ -1,5 +1,5 @@
 var Z_SmartConfig = {
-    Title: "Ranks And Titles",
+    Title: "SmartConfig",
     Author: "Killparadise",
     Version: V(1, 0, 0),
     HasConfig: true,
