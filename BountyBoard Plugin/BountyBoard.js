@@ -4,19 +4,13 @@ var BountyBoard = {
     Version: V(1, 0, 0),
     HasConfig: true,
     Init: function() {
-        try {
-        GetEconomy = plugins.Find('00-Economics');
-        if (GetEconomy) {
-            print("Found Economics")
-            EconAPI = Econ.Call("GetEconomyAPI", null)
-            print(EconomyAPI)
-        } else {
-            print("Economics not found!");
-        }
-    } catch(e) {
-        print(e.message.toString());
-        print(GetEconomy)
+        if (this.Config.useEcon) {
+        var getEcon = plugins.Find('00-Economics');
+        var econAPI = getEcon.Table.GetEconomyAPI();
+    } else {
+        print("Econmics switched off. Using Resources.");
     }
+
         this.getData();
     },
     OnServerInitialized: function() {
@@ -31,7 +25,8 @@ var BountyBoard = {
             "autoBounties": true,
             "maxBounty": 100000,
             "targetModifier": 2,
-            "staffCollect": false
+            "staffCollect": false,
+            "useEcon": false
         };
 
         this.Config.Messages = {
@@ -108,6 +103,10 @@ var BountyBoard = {
         BountyData.PlayerData[steamID].Bounty = BountyData.PlayerData[steamID].Bounty || 0;
         BountyData.PlayerData[steamID].isStaff = BountyData.PlayerData[steamID].isStaff || (authLvl > 0) || false;
         this.saveData();
+    },
+
+    checkInventory: function(player, rss, amt) {
+
     },
 
     cmdBounty: function(player, cmd, args) {
