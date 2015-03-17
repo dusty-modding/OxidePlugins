@@ -1,7 +1,7 @@
 var RanksAndTitles = {
     Title: "Ranks And Titles",
     Author: "Killparadise",
-    Version: V(1, 4, 4),
+    Version: V(1, 4, 5),
     ResourceId: 830,
     Url: "http://oxidemod.org/resources/ranks-and-titles.830/",
     HasConfig: true,
