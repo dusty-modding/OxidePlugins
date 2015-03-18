@@ -19,6 +19,7 @@ var RanksAndTitles = {
         prefix = this.Config.Prefix;
         GroupsAPI = plugins.Find('RotAG-Groups');
         chatHandler = plugins.Find('chathandler');
+        clansOn = plugins.Find('RustIOClans');
         if (chatHandler) {
             chatHandler = true;
         } else {
@@ -287,16 +288,16 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-				When the Player finishes loading in
-	------------------------------------------------------------------*/
+                When the Player finishes loading in
+    ------------------------------------------------------------------*/
     OnPlayerInit: function(player) {
         var steamID = rust.UserIDFromPlayer(player);
         this.checkPlayerData(player, steamID);
     },
 
     /*-----------------------------------------------------------------
-				All of our data handling
-	------------------------------------------------------------------*/
+                All of our data handling
+    ------------------------------------------------------------------*/
     loadTitleData: function() {
         //Lets get our own data and then check to see if theres a groups data file
         TitlesData = data.GetData('RanksandTitles');
@@ -330,7 +331,7 @@ var RanksAndTitles = {
     //This function is here so that if a player has an exisiting Group Tag, we don't grab that tag.
     //same with the color tag, but that wont be an issue soon.
     getName: function(player) {
-        if (GroupsAPI) {
+        if (GroupsAPI || clansOn) {
             var realName = player.displayName.split("] ").pop();
         } else {
             var realName = player.displayName;
@@ -347,7 +348,7 @@ var RanksAndTitles = {
     //Checks if data is present, if not it will attempt to build the players data spot
     refreshData: function(player, cmd, args) {
         var steamID = rust.UserIDFromPlayer(player);
-            this.checkPlayerData(player, steamID);
+        this.checkPlayerData(player, steamID);
         if (TitleData.PlayerData[steamID] === undefined) {
             print("No Data found, Attempting to build Data");
             rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noData, "0");
@@ -357,8 +358,8 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-				Our functions to find players
-	------------------------------------------------------------------*/
+                Our functions to find players
+    ------------------------------------------------------------------*/
 
     //Find player by name this supports partial names, full names, and steamIDs its also case-insensitive
     findPlayerByName: function(player, args) {
@@ -559,115 +560,123 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-					 Get our Counts and set Ranks
-	 ------------------------------------------------------------------*/
+                     Get our Counts and set Ranks
+     ------------------------------------------------------------------*/
 
     //This is the arithmatic function to grab the closes karma number from our ranks
     getClosest: function(arr, closestTo) {
-      try {
-        arr = this.getRanksArray();
-        if (arr.length > 0) {
+        try {
+            arr = this.getRanksArray();
+            if (arr.length > 0) {
 
-            for (var i = 0; i < arr.length; i++) {
-                if (closestTo >= 0) {
-                    if (arr[i] <= closestTo && arr[i] >= 0) closest = arr[i]; 
-                } else if (closestTo <= 0) {
-                    if (arr[i] >= closestTo && arr[i] <= 0) closest = arr[i];
+                for (var i = 0; i < arr.length; i++) {
+                    if (closestTo >= 0) {
+                        if (arr[i] <= closestTo && arr[i] >= 0) closest = arr[i];
+                    } else if (closestTo <= 0) {
+                        if (arr[i] >= closestTo && arr[i] <= 0) closest = arr[i];
+                    }
                 }
             }
+            return closest;
+        } catch (e) {
+            print(e.message.toString())
         }
-        return closest;
-      } catch(e) {
-        print(e.message.toString())
-      }
     },
 
     getRanksArray: function() {
-      try {
-        var temp = [];
+        try {
+            var temp = [];
 
-        for (var i = 0; i < this.Config.Ranks.length; i++) {
-            if (this.Config.Settings.karma) {
-                temp.push(this.Config.Ranks[i].karma);
-            } else {
-                temp.push(this.Config.Ranks[i].killsNeeded);
+            for (var i = 0; i < this.Config.Ranks.length; i++) {
+                if (this.Config.Settings.karma) {
+                    temp.push(this.Config.Ranks[i].karma);
+                } else {
+                    if (this.Config.Ranks[i].killsNeeded !== "disabled") {
+                        temp.push(this.Config.Ranks[i].killsNeeded);
+                    }
+                }
             }
+            return temp;
+        } catch (e) {
+            print(e.message.toString());
         }
-        return temp;
-      } catch(e) {
-        print(e.message.toString());
-      }
     },
 
     checkPunish: function(killerID, victimID) {
-      try {
-        if (this.Config.Settings.usePunishSystem) {
-            var punish = this.Config.Punishment;
-            var player = this.findPlayer(killerID),
-                karma;
-            for (var i = 0; i < punish.length; i++) {
-                if (TitlesData.PlayerData[killerID].Rank === punish[i].rank && TitlesData.PlayerData[victimID].Karma < 0 && TitlesData.PlayerData[killerID].Karma < 0) {
-                    karma = TitlesData.PlayerData[victimID].Karma * punish[i].multiplier;
-                } else if (TitlesData.PlayerData[killerID].Rank === punish[i].rank && TitlesData.PlayerData[victimID].Karma > 0 && TitlesData.PlayerData[killerID].Karma > 0) {
-                    karma = TitlesData.PlayerData[victimID].Karma * punish[i].multiplier;
-                } else {
-                    return 0;
+        try {
+            if (this.Config.Settings.usePunishSystem) {
+                var punish = this.Config.Punishment;
+                var player = this.findPlayer(killerID),
+                    karma;
+                for (var i = 0; i < punish.length; i++) {
+                    if (TitlesData.PlayerData[killerID].Rank === punish[i].rank && TitlesData.PlayerData[victimID].Karma < 0 && TitlesData.PlayerData[killerID].Karma < 0) {
+                        karma = TitlesData.PlayerData[victimID].Karma * punish[i].multiplier;
+                    } else if (TitlesData.PlayerData[killerID].Rank === punish[i].rank && TitlesData.PlayerData[victimID].Karma > 0 && TitlesData.PlayerData[killerID].Karma > 0) {
+                        karma = TitlesData.PlayerData[victimID].Karma * punish[i].multiplier;
+                    } else {
+                        return 0;
+                    }
                 }
+                var rplObj = {
+                    rankName: "<color=lime>" + TitlesData.PlayerData[victimID].Title + "</color>",
+                    karmaAmt: "<color=red>" + karma + "</color>"
+                };
+                rust.SendChatMessage(player, prefix.ranksandtitles, msgs.punishMsg.replace(/rankName|karmaAmt/gi, function(matched) {
+                    return rplObj[matched];
+                }), "0");
+                print(karma);
+                return karma;
+            } else {
+                return 0;
             }
-            var rplObj = {
-                rankName: "<color=lime>" + TitlesData.PlayerData[victimID].Title + "</color>",
-                karmaAmt: "<color=red>" + karma + "</color>"
-            };
-            rust.SendChatMessage(player, prefix.ranksandtitles, msgs.punishMsg.replace(/rankName|karmaAmt/gi, function(matched) { return rplObj[matched]; }), "0");
-            print(karma);
-            return karma;
-        } else {
-            return 0;
+        } catch (e) {
+            print(e.message.toString());
         }
-      } catch(e) {
-        print(e.message.toString());
-      }
     },
     //this is our main hub all player data hits this function and is then sent else where if need be
     //or it will continue through the process. This is the default ranks function
     //it checks certain features and if a special case is not found, it will run its code.
     setRankTitle: function(playerID, player) {
-            if (playerID === "Test") return true;
+        if (playerID === "Test") return true;
 
-            for (var ii = 0; ii < this.Config.Titles.length; ii++) {
-                if (TitlesData.PlayerData[playerID].Title === this.Config.Titles[ii].title) {
-                    return false;
-                }
-            }
+        //Refresh GroupData
+        GroupData = data.GetData("Groups");
+        GroupData = GroupData || {};
 
-            if (TitlesData.PlayerData[playerID].isAdmin && noAdmin) {
-                print("Admins turned off for rankings. Skipping Admin.");
+        for (var ii = 0; ii < this.Config.Titles.length; ii++) {
+            if (TitlesData.PlayerData[playerID].Title === this.Config.Titles[ii].title) {
                 return false;
-            } else if (useTitles) {
-                return this.setTitle(playerID, player);
-            } else {
-                var i = 0,
-                    j = this.Config.Ranks.length,
-                    useTitles = this.Config.Settings.useTitles,
-                    kills = TitlesData.PlayerData[playerID].Kills,
-                    karma = TitlesData.PlayerData[playerID].Karma,
-                    karmaOn = this.Config.Settings.karma,
-                    noAdmin = this.Config.Settings.noAdmin,
-                    oldRank = TitlesData.PlayerData[playerID].Rank;
-
-                for (i; i < j; i++) {
-                    if (karmaOn && this.getClosest([], karma) === this.Config.Ranks[i].karma) {
-                        TitlesData.PlayerData[playerID].Title = this.Config.Ranks[i].title;
-                        TitlesData.PlayerData[playerID].Rank = this.Config.Ranks[i].rank;
-                    } else if (!karmaOn && this.getClosest([], kills) === this.Config.Ranks[i].killsNeeded) {
-                        TitlesData.PlayerData[playerID].Title = this.Config.Ranks[i].title;
-                        TitlesData.PlayerData[playerID].Rank = this.Config.Ranks[i].rank;
-                    }
-                }
-                this.checkPromo(oldRank, TitlesData.PlayerData[playerID].Rank, player);
             }
-            this.saveData();
-            this.setDisplayName(playerID);
+        }
+
+        if (TitlesData.PlayerData[playerID].isAdmin && noAdmin) {
+            print("Admins turned off for rankings. Skipping Admin.");
+            return false;
+        } else if (useTitles) {
+            return this.setTitle(playerID, player);
+        } else {
+            var i = 0,
+                j = this.Config.Ranks.length,
+                useTitles = this.Config.Settings.useTitles,
+                kills = TitlesData.PlayerData[playerID].Kills,
+                karma = TitlesData.PlayerData[playerID].Karma,
+                karmaOn = this.Config.Settings.karma,
+                noAdmin = this.Config.Settings.noAdmin,
+                oldRank = TitlesData.PlayerData[playerID].Rank;
+
+            for (i; i < j; i++) {
+                if (karmaOn && this.getClosest([], karma) === this.Config.Ranks[i].karma) {
+                    TitlesData.PlayerData[playerID].Title = this.Config.Ranks[i].title;
+                    TitlesData.PlayerData[playerID].Rank = this.Config.Ranks[i].rank;
+                } else if (!karmaOn && this.getClosest([], kills) === this.Config.Ranks[i].killsNeeded) {
+                    TitlesData.PlayerData[playerID].Title = this.Config.Ranks[i].title;
+                    TitlesData.PlayerData[playerID].Rank = this.Config.Ranks[i].rank;
+                }
+            }
+            this.checkPromo(oldRank, TitlesData.PlayerData[playerID].Rank, player);
+        }
+        this.saveData();
+        this.setDisplayName(playerID);
     },
 
     //This is our function if Titles Only mode is set to true, this function is called by our main hub and then sets titles instead
@@ -699,8 +708,8 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-				Check for promotions
-	------------------------------------------------------------------*/
+                Check for promotions
+    ------------------------------------------------------------------*/
 
     //This is called by our main hub if a players rank increases it will display the message "you've been promoted!"
     //this may not exist for long and may be merged into the main hub function soon.
@@ -715,8 +724,8 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-						Grab Karma and Karma Commands
-	------------------------------------------------------------------*/
+                        Grab Karma and Karma Commands
+    ------------------------------------------------------------------*/
 
     //A simple function to allow our users to set custom karma modifiers for each rank this searches our config file
     //for karmaModifier to the matching title of the killed players ID it then send the found number back to the death function
@@ -734,8 +743,8 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-						Check for Deaths
-	------------------------------------------------------------------*/
+                        Check for Deaths
+    ------------------------------------------------------------------*/
 
     //This is our death function this is the primary function, if this breaks. Everything breaks
     //it has several fail safe checks to make sure data is present, and make sure it isn't corrupt
@@ -798,8 +807,8 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-						 Command Handling
-	------------------------------------------------------------------*/
+                         Command Handling
+    ------------------------------------------------------------------*/
 
     setKarma: function(player, cmd, args) {
         var getPlayer = this.findPlayerByName(player, args);
@@ -968,8 +977,8 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-							Chat Handling(New)
-	------------------------------------------------------------------*/
+                            Chat Handling(New)
+    ------------------------------------------------------------------*/
 
     //This function is used by playerchat to grab the correct colors for the rank, or title used by the player
     //it will then send back the found color for the chat function to use.
@@ -1072,8 +1081,8 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-							Debugger
-	------------------------------------------------------------------*/
+                            Debugger
+    ------------------------------------------------------------------*/
     //Simple debugger that will place lots of information into the console for issue disputes
     debug: function(player, cmd, args) {
         try {
