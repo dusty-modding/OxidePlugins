@@ -1,7 +1,7 @@
 var RanksAndTitles = {
 	Title: "Ranks And Titles",
 	Author: "Killparadise",
-	Version: V(1, 4, 5),
+	Version: V(1, 4, 6),
 	ResourceId: 830,
 	Url: "http://oxidemod.org/resources/ranks-and-titles.830/",
 	HasConfig: true,
@@ -757,6 +757,8 @@ var RanksAndTitles = {
 					print("Victim does not have registered Data in Data File");
 					print("Attempting to create Victim Data File...");
 					this.checkPlayerData(victim, victimID);
+				} else if (!TitlesData.PlayerData[victimID] && !victim.IsConnected()) {
+					print("Victim has no data but was offline, unable to build a data file.");
 				}
 
 				var karmaOn = this.Config.Settings.karma;
@@ -964,7 +966,7 @@ var RanksAndTitles = {
 	},
 
 	/*-----------------------------------------------------------------
-	                        Chat Handling(New)
+	                        Chat Handling & API setup
 	------------------------------------------------------------------*/
 
 	//This function is used by playerchat to grab the correct colors for the rank, or title used by the player
@@ -1036,7 +1038,7 @@ var RanksAndTitles = {
 					hidden = TitlesData.PlayerData[steamID].hidden,
 					colorOn = this.Config.Settings.colorSupport,
 					color = this.getColor(steamID);
-				var displayName = player.displayName.split(" [").shift()
+				var displayName = player.displayName;
 				if (msg.substring(1, 1) === "/" || msg === "") return false;
 				if (hidden || title === "") {
 					global.ConsoleSystem.Broadcast("chat.add", steamID, "<color=" + this.Config.Settings.chatNameColor + ">" + displayName + "</color> " + msg);
