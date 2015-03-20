@@ -1,0 +1,11 @@
+v1.0.0 Current Unreleased
+========================================
+-Initial Release
+-Basic Bounty Board
+-Uses Resources
+-Set bounties
+-claim Bounties
+-Set Targets (No real purpose yet)
+-Can set weapons/ammo/and other items for bounties
+-All automated system
+-In game Board

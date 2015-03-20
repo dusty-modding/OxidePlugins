@@ -4,17 +4,12 @@ var BountyBoard = {
     Version: V(1, 0, 0),
     HasConfig: true,
     Init: function() {
-        if (this.Config.useEcon) {
-        var getEcon = plugins.Find('00-Economics');
-        var econAPI = getEcon.Table.GetEconomyAPI();
-    } else {
-        print("Econmics switched off. Using Resources.");
-    }
-
         this.getData();
     },
+    
     OnServerInitialized: function() {
         msgs = this.Config.Messages;
+        prefix = this.Config.Prefix;
         command.AddChatCommand("bounty", this.Plugin, "cmdBounty");
     },
 
@@ -29,9 +24,11 @@ var BountyBoard = {
             "useEcon": false
         };
 
+        this.Config.Prefix = "BountyBoard";
+
         this.Config.Messages = {
             "curBounty": "The Current Bounty on your head is: ",
-            "invSyn": "Syntax Invalid, Please try again.",
+            "invSyn": "Syntax Invalid, Please try again. {cmd}",
             "noBty": "Target has no Bounty!",
             "setTar": "Target set. Happy Hunting.",
             "setTrgWarn": " Made you his target! Watch out!",
@@ -39,7 +36,12 @@ var BountyBoard = {
             "offline": "That Player is currently offline.",
             "btyClaim": "{plyrName} has taken the bounty of {btyAmt} from {deadPlyr}!",
             "staff": "Sorry, Staff cannot collect Bounties from slain players.".
-            "btyPlaced": "Someone placed a "
+            "btyPlaced": "Someone placed a {bty} on you!",
+            "notEnough": "Not Enough {RssName}",
+            "overMax": "You cannot exceed the max bounty of {maxBty}",
+            "notFound": "Item Not Found.",
+            "currBty": "The Current Bounty on your head is: ",
+            "resetData": "BountyBoard Data Reset"
         };
     },
 
@@ -47,6 +49,9 @@ var BountyBoard = {
         this.checkPlayerData(player);
     },
 
+    //----------------------------------------
+    //          Finding Player Info
+    //----------------------------------------
     findPlayerByName: function(player, args) {
         try {
             var global = importNamespace("");
@@ -83,11 +88,24 @@ var BountyBoard = {
         }
     },
 
+    findPlayerByID: function(playerid) {
+        var global = importNamespace("");
+        var targetPlayer = global.BasePlayer.Find(playerid);
+        if (targetPlayer) {
+            return targetPlayer;
+        } else {
+            return false;
+        }
+    },
+
+    //----------------------------------------
+    //          Data Handling
+    //----------------------------------------
     getData: function() {
         BountyData = data.GetData('Bounty');
         BountyData = BountyData || {};
         BountyData.PlayerData = BountyData.PlayerData || {};
-        BountyData.BgData = BountyData.BgData || {};
+        BountyData.Board = BountyData.Board || {};
         this.saveData();
     },
 
@@ -100,23 +118,20 @@ var BountyBoard = {
         var authLvl = player.net.connection.authLevel;
         BountyData.PlayerData[steamID] = BountyData.PlayerData[steamID] || {};
         BountyData.PlayerData[steamID].Target = BountyData.PlayerData[steamID].Target || "";
-        BountyData.PlayerData[steamID].Bounty = BountyData.PlayerData[steamID].Bounty || 0;
+        BountyData.PlayerData[steamID].Bounty = BountyData.PlayerData[steamID].Bounty || "";
+        BountyData.PlayerData[steamID].BountyType = BountyData.PlayerData[steamID].BountyType || "";
         BountyData.PlayerData[steamID].isStaff = BountyData.PlayerData[steamID].isStaff || (authLvl > 0) || false;
         this.saveData();
     },
 
-    checkInventory: function(player, rss, amt) {
-
-    },
-
+    //----------------------------------------
+    //          Command Handling
+    //----------------------------------------
     cmdBounty: function(player, cmd, args) {
         var steamID = rust.UserIDFromPlayer(player);
         switch (args[0]) {
             case "add":
                 this.addBounty(player, cmd, args);
-                break;
-            case "check":
-                this.checkBoard(player, cmd, args);
                 break;
             case "target":
                 this.setTarget(player, cmd, args);
@@ -125,69 +140,24 @@ var BountyBoard = {
                 if (authLvl >= this.Config.authLevel) {
                     this.resetData(player, cmd, args);
                 } else if (authLvl < this.Config.authLevel) {
-                    rust.SendChatMessage(player, "BountyBoard", msgs.noPerms, "0");
+                    rust.SendChatMessage(player, prefix, msgs.noPerms, "0");
                     return false;
                 } else {
-                    rust.SendChatMessage(player, "BountyBoard", msgs.badSyntaxRank, "0");
+                    rust.SendChatMessage(player, prefix, msgs.badSyntaxRank, "0");
                     return false;
                 }
             default:
-                rust.SendChatMessage(player, "BountyBoard", "The current Bounty on your head is: " + BountyData.PlayerData[steamID].Bounty, "0");
+                rust.SendChatMessage(player, prefix, msgs.currBty + " " + BountyData.PlayerData[steamID].Bounty, "0");
                 break;
         }
     },
 
-    addBounty: function(player, cmd, args) {
-        try {
-        var steamID = rust.UserIDFromPlayer(player);
-        EconomyData = EconAPI.GetUserData(steamID);
-        var authLvl = player.net.connection.authLevel;
-        if (this.Config.canSetBounties && !BountyData.PlayerData[steamID].isStaff) {
-            if (args[0] === "add" && args.length === 3) {
-                var target = this.findPlayerByName(args[2]);
-                var amount = args[3];
-                var targetID = rust.UserIDFromPlayer(target);
-                if (targetID.length && amount <= this.Config.Settings.maxBounty) {
-                    if (EconomyData.Withdraw(amount)) {
-                        BountyData.PlayerData[targetID].Bounty = amount;
-                        rust.SendChatMessage(player, "BountyBoard", "Set " + amount + " On player: " + target, "0");
-                        rust.SendChatMessage(target, "BountyBoard", "Someone placed a " + amount + " Bounty on you!", "0");
-                        this.updateBoard(target, amount, targetID);
-                    } else {
-                        rust.SendChatMessage(player, "BountyBoard", "You don't have enough funds!", "0");
-                    }
-                } else if (amount > this.Config.maxBounty) {
-                    rust.SendChatMessage(player, "BountyBoard", "You canot exceed the set max bounty: " + this.Config.Settings.maxBounty, "0");
-                } else if (!targetID.length) {
-                    rust.SendChatMessage(player, "BountyBoard", "Invalid Player name, please try again.", "0");
-                } else {
-                    rust.SendChatMessage(player, "BountyBoard", "Invalid Syntax please use: /bounty add playername amount", "0");
-                }
-            }
-        } else {
-            rust.SendChatMessage(player, "BountyBoard", "Sorry this is disabled currently!", "0");
-        }
-    } catch(e) {
-        print(e.message.toString())
-    }
-    },
-
-    updateBoard: function(targetID, amount) {
-        //TODO: update the bounty board with new bounties and claimed bounties.
-        var EconAPI = EconAPI.GetUserData(targetID);
-        BountyData.PlayerData[targetID].Amount = amount;
+    resetData: function(player, cmd, args) {
+        delete BoardData.PlayerData;
+        delete BoardData.Board;
         this.saveData();
-        EconAPI.SaveData();
-    },
-
-    checkBoard: function(player, cmd, args) {
-        rust.SendChatMessage(player, "", "------Bounty Board------", "0");
-        for (var i = 0; i < BountyData.Bounties.length; i++) {
-            if (BountyData.Bounties[i].Amount > 0) {
-                rust.SendChatMessage(player, "", BountyData.Bounties[i].Target + ": $" + BountData.Bounties[i].Amount, "0");
-            }
-        }
-        rust.SendChatMessage(player, "", "------Happy Hunting------", "0");
+        this.getData();
+        rust.SendChatMessage(player, prefix, msgs.resetData, "0");
     },
 
     setTarget: function(player, cmd, args) {
@@ -195,20 +165,110 @@ var BountyBoard = {
             var pName = this.findPlayerByName(args[1]);
             var steamID = rust.UserIDFromPlayer(player);
         } else if (args.length === 1) {
-            rust.SendChatMessage(player, "BountyBoard", msgs.curTar, "0");
+            rust.SendChatMessage(player, prefix, msgs.curTar, "0");
         } else {
-            rust.SendChatMessage(player, "BountyBoard", msgs.invSyn, "0");
+            rust.SendChatMessage(player, prefix, msgs.invSyn.replace("{cmd}", "/bty target playername"), "0");
         }
 
-        if (pName[0].displayName !== player.displayName && BountyData.PlayerData[pName[1]].Bounty > 0 && pName[0].IsConnected()) {
+        if (pName[0].displayName !== player.displayName && BountyData.PlayerData[pName[1]].Bounty !== "" && pName[0].IsConnected()) {
             BountyData.PlayerData[steamID].Target = pName[0].displayName;
-            rust.SendChatMessage(player, "BountyBoard", msgs.setTar, "0");
-            rust.SendChatMessage(pName[0], "BountyBoard", player.displayName + msgs.setTrgWarn, "0");
+            rust.SendChatMessage(player, prefix, msgs.setTar, "0");
+            rust.SendChatMessage(pName[0], prefix, player.displayName + msgs.setTrgWarn, "0");
         } else if (!pName[0].IsConnected()) {
-            rust.SendChatMessage(player, "BountyBoard", msgs.offline, "0");
+            rust.SendChatMessage(player, prefix, msgs.offline, "0");
         } else {
-            rust.SendChatMessage(player, "BountyBoard", msgs.noBty, "0");
+            rust.SendChatMessage(player, prefix, msgs.noBty, "0");
         }
+    },
+
+    addBounty: function(player, cmd, args) {
+        // /bty add playername amt itemname
+        //       0    1         2     3
+        try {
+            var steamID = rust.UserIDFromPlayer(player);
+            var authLvl = player.net.connection.authLevel;
+            var main = player.inventory.containerMain;
+            var mainList = main.itemList.GetEnumerator();
+            var argObj = {
+                "plyrName": args[1],
+                "amt": Number(args[2]),
+                "itemName": args[3]
+            };
+            var targetPlayer = this.findPlayerByName(player, args);
+            while (mainList.MoveNext()) {
+                var name = mainList.Current.info.shortname,
+                    amount = mainList.Current.amount,
+                    condition = mainList.Current.condition;
+                if (name === argObj.itemName && argObj.amt <= amount && argObj.amt <= this.Config.Settings.maxBounty) {
+                    var newAmt = amount - argObj.amt;
+                    amount = newAmt;
+                    BountyData.PlayerData[steamID].Bounty = argObj.amt + " " + argObj.itemName;
+                    BountyData.PlayerData[steamID].BountyType = argObj.itemName;
+                    rust.SendChatMessage(targetPlayer[0], prefix, msgs.btyPlaced.replace("{bty}", argObj.amt + " " + argObj.itemName), "0");
+                } else if (argObj.amt > amount) {
+                    rust.SendChatMessage(player, prefix, msgs.notEnough.replace("{RssName}", argObj.itemName), "0");
+                } else if (argObj.amt > this.Config.Settings.maxBounty) {
+                    rust.SendChatMessage(player, prefix, msgs.overMax.replace("{maxBty}", this.Config.Settings.maxBounty), "0");
+                } else {
+                    rust.SendChatMessage(player, prefix, msgs.notFound, "0");
+                }
+            }
+            this.saveData();
+            this.updateBoard(targetPlayer[1], argObj.amt, argObj.itemName)
+        } catch (e) {
+            print(e.message.toString())
+        }
+    },
+
+    //----------------------------------------
+    //          Board Handling
+    //----------------------------------------
+    updateBoard: function(targetID, claimed, amount, itemName) {
+        //TODO: update the bounty board with new bounties and claimed bounties.
+        var getPlayer = this.findPlayerByID(targetID);
+        if (BountyData.Board[targetID] === undefined) {
+            BountyData.Board[targetID] = {};
+            BountyData.Board[targetID].Name = getPlayer[0].displayName;
+            BountyData.Board[targetID].Amount = [amount + " " + itemName];
+            BountyData.Board[targetID].ItemType = [itemName];
+        } else if (claimed === false && BountyData.Board[targetID] !== undefined) {
+            BountyData.Board[targetID].Amount.push(amount + " " + itemName);
+            BountyData.Board[targetID].ItemType.push(itemName);
+        } else {
+            BountyData.Board[targetID] = null;
+            delete BountyData.Board[targetID];
+        }
+        this.saveData();
+    },
+
+    checkBoard: function(player, cmd, args) {
+        rust.SendChatMessage(player, "", "------Bounty Board------", "0");
+        for (var key in BountyData.Board) {
+                rust.SendChatMessage(player, "", BountyData.Board[key].Name + ": " + BountData.Bounties[key].Amount, "0");
+        }
+        rust.SendChatMessage(player, "", "------Happy Hunting------", "0");
+    },
+
+    claimBounty: function(victimID, attackerID) {
+        var amount = BountyData.Board[victimID].Amount,
+        item = BountyData.Board[victimID].ItemType,
+        claimed = false;
+        var getPlayer = this.findPlayerByID(attackerID);
+        var i = 0;
+        for (i; i < amount.length; i++) {
+            this.giveItem(getPlayer[0], item[i], amount[i]);
+            if (i >= amount.length) {
+                claimed = true;
+            } 
+        }
+        this.updateBoard(victimID, claimed, 0, null);
+    },
+
+    giveItem: function(player, itemName, amount) {
+        itemName = itemName.toLowerCase();
+        var definition = ItemManager.FindItemDefinition(itemName);
+        if (definition == null) return print("Unable to Find an Item for Bounty.");
+        player.inventory.GiveItem(ItemManager.CreateByItemID(Number(definition.itemid, amount, false)), player.inventory.containerMain);
     },
 
     OnEntityDeath: function(entity, hitinfo) {
@@ -216,31 +276,37 @@ var BountyBoard = {
         var attacker = hitinfo.Initiator;
 
         if (victim.ToPlayer() && attacker.ToPlayer() && victim.displayName !== attacker.displayName) {
-        var victimID = rust.UserIDFromPlayer(victim), attackerID = rust.UserIDFromPlayer(attacker);
-        var EconAPI = EconAPI.GetUserData(attackerID);
-        if (BountyData.PlayerData[victimID] === undefined) {
-            print("Data File not found for Victim, attempting build now...");
-            return this.checkPlayerData(victim);
-        } else if (BountyData.PlayerData[attakerID] === undefined) {
-            print("Data File not found for Attacker, attempting build now...");
-            return this.checkPlayerData(attacker);
-        }
+            var victimID = rust.UserIDFromPlayer(victim),
+                attackerID = rust.UserIDFromPlayer(attacker);
+            if (!TitlesData.PlayerData[victimID] && victim.IsConnected()) {
+                print("Data File not found for " + victim.displayName + ", attempting build now...");
+                return this.checkPlayerData(victim);
+            } else if (!TitlesData.PlayerData[killerID]) {
+                print("Data File not found for " + attacker.displayName + ", attempting build now...");
+                return this.checkPlayerData(attacker);
+            } else if (!TitlesData.PlayerData[victimID] && !victim.IsConnected()) {
+                    print("Victim has no data but was offline, unable to build a data file.");
+            }
 
-        if (BountyData.PlayerData[attackerID].isStaff && !this.Config.Settings.staffCollect) {
-            rust.SendChatMessage(player, "BountyBoard", msgs.staff, "0");
+            if (BountyData.PlayerData[attackerID].isStaff && !this.Config.Settings.staffCollect) {
+                rust.SendChatMessage(player, prefix, msgs.staff, "0");
+                return false;
+            }
+
+            if (BountyData.PlayerData[victimID].Bounty !== "" && BountyData.PlayerData[attackerID].Target === victim.displayName && victim.displayName !== attacker.displayName) {
+                var rpObj = {
+                    "plyrName": attacker.displayName,
+                    "btyAmt": BountyData.PlayerData[victimID].Bounty * targetModifier,
+                    "deadPlyr": victim.displayName
+                }
+                rust.SendChatMessage(player, prefix, msgs.btyClaim.replace(/plyrName|btyAmt|deadPlyr|/g, function(matched) {
+                    return rpObj[matched]
+                }), "0");
+                this.claimBounty(victimID, attackerID);
+            }
+
+        } else if (victim.ToPlayer() && victim.displayName === attacker.displayName) {
             return false;
         }
-
-        if (BountyData.PlayerData[victimID].Bounty > 0 && BountyData.PlayerData[attackerID].Target === victim.displayName && victim.displayName !== attacker.displayName) {
-            EconAPI.Deposit(BountyData.PlayerData[victimID].Bounty * targetModifier);
-            var rpObj = {plyrName: attacker.displayName, btyAmt: BountyData.PlayerData[victimID].Bounty * targetModifier, deadPlyr: victim.displayName} 
-            rust.SendChatMessage(player, "BountyBoard", msgs.btyClaim.replace(/plyrName|btyAmt|deadPlyr|/g, function(matched){return rpObj[matched]}), "0");
-            BountyData.PlayerData[victimID].Bounty = 0;
-            this.updateBoard(victimID, BountyData.PlayerData[victimID].Bounty);
-        }
-
-    } else if (victim.ToPlayer() && victim.displayName === attacker.displayName) {
-        return false;
-    }
     }
 }
