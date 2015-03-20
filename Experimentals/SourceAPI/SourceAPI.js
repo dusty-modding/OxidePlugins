@@ -2,117 +2,103 @@ var SourceAPI = {
     Title: "Source API",
     Author: "Killparadise",
     Version: V(1, 0, 0),
-    HasConfig: true,
+    HasConfig: false,
     Init: function() {
         global = importNamespace("");
         this.getData();
-        var j = 0
-        for (var key in SourceData.Plugins) {
-            j++;
-            loadedPlugins[j] = SourceData.Plugins[key];
-            if (loadedPlugins) {
-                print(loadedPlugins + " Grabbed and Added...");
-            }
-        }
-        msgs = this.Config.Messages;
         command.AddConsoleCommand("source.get", this.Plugin, "getPlugin");
     },
 
     OnServerInitialized: function() {
-
+        print("SourceAPI Setup. Locating Plugins");
     },
 
-    LoadDefaultConfig: function() {
-        this.Config.Settings = {};
+    //-------------------------------------------
+    //          Handle incoming calls
+    //-------------------------------------------
+    //  Calls a function using the .Call method
+    //       handles 1 argument/parameter
+    //-------------------------------------------
+    handleCall: function(name, func, data) {
+        try {
+                var temp = name.Call(func, data);
 
-        this.Config.Messages = {}
-    },
-
-    getData: function() {
-        SourceData = data.GetData("Source");
-        SourceData = SourceData || {};
-        SourceData.Plugins = SourceData.Plugins || {};
-        this.saveData();
-    },
-
-    getDetailsData: function(plugin) {
-        SourceData.Plugins[plugin] = SourceData.Plugins[plugin] || {};
-        SourceData.Plugins[plugin].Name = SourceData.Plugins[plugin].Name || ""
-        SourceData.Plugins[plugin].Functions = SourceData.Plugins[plugin].Functions || {};
-    },
-
-    getPlugin: function(plugin) {
-        var grabPlugin = plugins.Find(plugin);
-        return grabPlugin;
-    },
-
-    getExtention: function(file) {
-        var ext = file.split('.').pop();
-        var pluginName = file.split('.').shift();
-        var plugin = [];
-        switch (ext) {
-            case "js":
-                plugin.push(pluginName, "javascript");
-                return plugin;
-                break;
-            case "py":
-                plugin.push(pluginName, "python");
-                return plugin;
-                break;
-            case "lua":
-                plugin.push(pluginName, "lua");
-                return plugin;
-                break;
-            case "cs":
-                plugin.push(pluginName, "csharp");
-                return plugin;
-                break;
-            default:
-                return "Error";
-                break;
+            return temp;
+        } catch (e) {
+            this.errorHandler(e);
         }
     },
 
-    grabData: function(player, pluginName, funct) {
-        //Layout: SourceAPI.grabData(player, "00-Economics.lua", "GetEconomyAPI()");
-        if (player && pluginName) {
-            var lang = this.getExtention(pluginName);
-            var plugin = this.getPlugin(lang[0]);
-        } else {
-            print("Error - Failed to Resolve plugin Info");
-            return false;
+    //--------------------------------------------------
+    //    Grabs plugins using names (Case sensative)
+    //--------------------------------------------------
+    //    takes an array to search for and find all 
+    //    given plugins via their name (in the array)
+    //          and returns the plugin.
+    //--------------------------------------------------
+    grabPlugin: function(plugins) {
+        try {
+
+            plugins.forEach(function(element, index) {
+                if (element !== null) return plugins.Find(element);
+            });
+
+        } catch (e) {
+            this.errorHandler(e);
         }
 
-        this.makeCall(player, plugin, funct, lang[1]);
     },
 
-    makeCall: function(player, plugin, funct, lang) {
+    //----------------------------------------------------------------------
+    //            Call Functions only to return the function
+    // ---------------------------------------------------------------------
+    //              This will call a function and return 
+    //              that function without executing data
+    // ---------------------------------------------------------------------
+    getFunction: function(name, func, data) {
+        var plugin = this.grabPlugin(name);
+        var temp = plugin.Object.func
+        return temp;
+    },
 
-        if (lang === "lua") {
-            var getCall = plugin.Call('self:'+funct);
-            this.setupJSON(getCall);
-        } else if (lang === "csharp") {
-            var getCall = plugin.Call(funct);
-            this.setupJSON(getCall);
-        } else if (lang === "python") {
-            var getCall = plugin.Call('self.'+funct);
-            this.setupJSON(getCall);
-        } else if (lang === "javascript") {
-            var getCall = plugin.Call('this.'+funct);
-            this.setupJSON(getCall);
-        } else {
-            print("Failed to make call");
-            return false;
+    //--------------------------------------------------------
+    //            Call Functions only to return data
+    // -------------------------------------------------------
+    //           This will call a function and return 
+    //           data from that functions execution
+    //              take a single argument
+    // -------------------------------------------------------
+    getFunctionData: function(name, func, data) {
+        var plugin = this.grabPlugin(name);
+        var temp = plugin.Object.func(data);
+        return temp;
+    },
+
+    //--------------------------------------------------------
+    //            Call Functions only to return data
+    // -------------------------------------------------------
+    //           This will call a function with 
+    //           two parameters and return the executed
+    //              data from that function.
+    // -------------------------------------------------------
+    getFunctionDataTwo: function(name, func, arg1, arg2) {
+        var plugin = this.grabPlugin(name);
+        var temp = plugin.Object.func(arg1, arg2);
+        return temp;
+    },
+
+    //--------------------------------------------------------
+    //                 Error Handling
+    // -------------------------------------------------------
+    //           Handle any errors and display them 
+    //           accross the console to be reported
+    //                  and for debugging.
+    // -------------------------------------------------------
+    errorHandler: function(err) {
+        print("Error Handler Debugging...");
+        for (var key in err) {
+            print(key + " " + err[key])
         }
-    },
-
-    setupJSON: function(data) {
-        if (data) {
-        return data;
-        } else {
-            print("failed to build JSON");
-            return false;
-        }
-    },
-
+        print("Please send this to Killparadise if issue persists");
+    }
 }
