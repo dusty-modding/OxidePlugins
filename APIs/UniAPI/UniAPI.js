@@ -116,6 +116,15 @@ var UniAPI = {
         this.saveData();
     },
 
+    testAPI: function(test) {
+        if (test) {
+            return print("API hit successfully");
+        } else {
+            return print("API hit, but param failed");
+        }
+    },
+
+
     /*--------------------------------------------
                     End API
     ----------------------------------------------*/
