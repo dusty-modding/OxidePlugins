@@ -5,7 +5,6 @@ var BountyBoard = {
 	Title: "Bounty Board",
 	Author: "Killparadise",
 	Version: V(1, 0, 1),
-	HasConfig: true,
 	Init: function() {
 		this.getData();
 		global = importNamespace("");
@@ -13,24 +12,35 @@ var BountyBoard = {
 
 	OnServerInitialized: function() {
 		this.msgs = this.Config.Messages;
+		this.timerHolder;
 		this.prefix = this.Config.Prefix;
 		friendsAPI = plugins.Find('0friendsAPI');
 		clansOn = plugins.Find('RustIOClans');
 		GroupsAPI = plugins.Find('RotAG-Groups');
+		this.updateConfig();
 		command.AddChatCommand("bty", this.Plugin, "cmdBounty");
 		command.AddChatCommand("tester", this.Plugin, "runCheck");
 	},
 
+	updateConfig: function() {
+            if (this.Config.Version !== "1.2") {
+                print("[BountyBoard] Updating Config, to latest version.")
+                this.LoadDefaultConfig();
+            } else {
+                return false;
+            }
+        },
+
 	LoadDefaultConfig: function() {
 		this.Config.authLevel = 2;
-		this.Config.Version = "1.1";
+		this.Config.Version = "1.2";
 		this.Config.Settings = {
 			"autoBounties": true,
 			"maxBounty": 100000,
 			"targetModifier": 2,
 			"staffCollect": false,
 			"useEcon": false,
-			"timer": 600,
+			"targetTimer": 600,
 			"antiFriend": true
 		};
 
@@ -62,6 +72,7 @@ var BountyBoard = {
 			"/bty - Check the current bounty on your head",
 			"/bty add playername amt itemname - Add a bounty onto a targeted player.",
 			"/bty board - shows the Bounty Board of everyone who has a bounty."
+			"/bty target playername - sets a entered player as a target to the user."
 		];
 		this.Config.AdminHelp = [
 
@@ -140,6 +151,7 @@ var BountyBoard = {
 		var authLvl = player.net.connection.authLevel;
 		BountyData.PlayerData[steamID] = BountyData.PlayerData[steamID] || {};
 		BountyData.PlayerData[steamID].Target = BountyData.PlayerData[steamID].Target || "";
+		BountyData.PlayerData[steamID].Timer = BountyData.PlayerData[steamID].Timer || 0;
 		BountyData.PlayerData[steamID].Bounty = BountyData.PlayerData[steamID].Bounty || [];
 		BountyData.PlayerData[steamID].BountyType = BountyData.PlayerData[steamID].BountyType || [];
 		BountyData.PlayerData[steamID].isStaff = BountyData.PlayerData[steamID].isStaff || (authLvl > 0) || false;
@@ -216,8 +228,9 @@ var BountyBoard = {
 			rust.SendChatMessage(player, this.prefix, this.msgs.invSyn.replace("{cmd}", "/bty target playername"), "0");
 		}
 
-		if (pName[0].displayName !== player.displayName && BountyData.PlayerData[pName[1]].Bounty !== "" && pName[0].IsConnected()) {
+		if (pName[0].displayName !== player.displayName && BountyData.PlayerData[pName[1]].Bounty.length > 0 && pName[0].IsConnected()) {
 			BountyData.PlayerData[steamID].Target = pName[0].displayName;
+			this.handleTargetTimer(pName[0]);
 			rust.SendChatMessage(player, this.prefix, this.msgs.setTar, "0");
 			rust.SendChatMessage(pName[0], this.prefix, player.displayName + this.msgs.setTrgWarn, "0");
 		} else if (!pName[0].IsConnected()) {
@@ -225,6 +238,10 @@ var BountyBoard = {
 		} else {
 			rust.SendChatMessage(player, this.prefix, this.msgs.noBty, "0");
 		}
+	},
+
+	handleTargetTimer: function(player) {
+
 	},
 
 	addBounty: function(player, cmd, args) {
@@ -382,29 +399,24 @@ var BountyBoard = {
 	checkForFriends: function(victimID, attackerID) {
 		//check for friends
 		GroupData = data.GetData("Groups");
-		var AttackerGroup = GroupsAPI.Call("GetUserData", attackerID);
-		var VictimGroup = GroupsAPI.Call("GetUserData", victimID);
 		print("Inside checkForFriends with: ");
 		print(attackerID + " Attacker");
 		print(victimID + " Victim");
 		print(this.Config.Settings.antiFriends);
-		print("Groups: " + GroupsAPI.length);
 		print("Do the players groups equal? " + GroupData.PlayerData[attackerID].Group === GroupData.PlayerData[victimID].Group);
-		print("Attacker Group: " + AttackerGroup.Group);
-		print("Victim Group: " + VictimGroup.Group);
-		if (this.Config.Settings.antiFriend && friendsAPI && friendsAPI.Call("HasFriend", attackerID, victimID)) {
+		if (this.Config.Settings.antiFriend) {
+		if (friendsAPI && friendsAPI.Call("HasFriend", attackerID, victimID)) {
 			print("Killer friends with victim");
 			return true;
-		} else {
-			return false;
-		}
-		//check for groups
-		if (this.Config.Settings.antiFriend && GroupsAPI && GroupData.PlayerData[attackerID].Group === GroupData.PlayerData[victimID].Group) {
-			print("groups logic")
+		} else if (GroupsAPI && GroupData.PlayerData[attackerID].Group === GroupData.PlayerData[victimID].Group) {
+			print("groups logic");
 			return true;
-		} else {
-			return false;
+		} else if (clansOn && clansOn.Call("HadFriend", attackerID, victimID)) {
+			print("Clans Logic");
+			return true;
 		}
+	}
+	return false;
 	},
 
 	OnEntityDeath: function(entity, hitinfo) {
@@ -415,7 +427,7 @@ var BountyBoard = {
 			if (victim.ToPlayer() && attacker.ToPlayer() && victim.displayName !== attacker.displayName) {
 				var victimID = rust.UserIDFromPlayer(victim),
 					attackerID = rust.UserIDFromPlayer(attacker);
-				// if (this.checkForFriends(victimID, attackerID)) return false;
+				if (this.checkForFriends(victimID, attackerID)) return false;
 				if (!BountyData.PlayerData[victimID] && !victim.IsConnected()) {
 					return false;
 				} else if (!BountyData.PlayerData[victimID] && victim.IsConnected()) {
