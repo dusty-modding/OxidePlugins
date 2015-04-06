@@ -100,7 +100,7 @@ var RanksAndTitles = {
                 "rankTitle": "Wannabe",
                 "title": "Player",
                 "karma": 1.0,
-                "killsNeeded": 1.0,
+                "killsNeeded": "disabled",
                 "Color": "#0000a0ff",
                 "karmaModifier": 1.0
             }];
@@ -266,7 +266,7 @@ var RanksAndTitles = {
 
         /*-----------------------------------------------------------------
 	            Our functions to find players
-	------------------------------------------------------------------*/
+	    ------------------------------------------------------------------*/
 
         //Find player by name this supports partial names, full names, and steamIDs its also case-insensitive
         findPlayerByName: function(player, args) {
@@ -848,7 +848,7 @@ var RanksAndTitles = {
         return TitlesData.PlayerData[steamID][key]
     },
 
-    //Our char function is called whenever a chat message is sent, it grabs a slew of information including, player files, the message
+    //Our chat function is called whenever a chat message is sent, it grabs a slew of information including, player files, the message
     //the player title and realname, and the steamId, using all of this it checks to make sure the chat wasn't empty or a command
     //then if checks if color support is activated if so it will sent the chat with the colored title
     //if its not enabled then it will send a default message with the players assigned title without the color.
