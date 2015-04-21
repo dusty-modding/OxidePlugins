@@ -71,7 +71,7 @@ var BountyBoard = {
 
 			"/bty - Check the current bounty on your head",
 			"/bty add playername amt itemname - Add a bounty onto a targeted player.",
-			"/bty board - shows the Bounty Board of everyone who has a bounty."
+			"/bty board - shows the Bounty Board of everyone who has a bounty.",
 			"/bty target playername - sets a entered player as a target to the user."
 		];
 		this.Config.AdminHelp = [
