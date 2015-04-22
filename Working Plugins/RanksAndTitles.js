@@ -318,10 +318,11 @@ var RanksAndTitles = {
   //This function is here so that if a player has an exisiting Group Tag, we don't grab that tag.
   //same with the color tag, but that wont be an issue soon.
   getName: function(player) {
+    var realName = "";
     if (GroupsAPI || clansOn) {
-      var realName = player.displayName.split("] ").pop();
+      realName = player.displayName.split("] ").pop();
     } else {
-      var realName = player.displayName;
+      realName = player.displayName;
     }
     return realName;
   },
@@ -466,7 +467,7 @@ var RanksAndTitles = {
               this.SaveConfig();
             }
           } else {
-
+            rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
           }
           break;
         case "kset":
@@ -670,22 +671,6 @@ var RanksAndTitles = {
         }
       }
       this.checkPromo(oldRank, TitlesData.PlayerData[playerID].Rank, player);
-    }
-    this.saveData();
-  },
-
-  //This is our function if Titles Only mode is set to true, this function is called by our main hub and then sets titles instead
-  //of ranks to a players name. it then sends this data back to our data file to be saved
-  setTitle: function(playerID, player) {
-    if (playerID === "Test") return true;
-    var i = 0,
-      j = this.Config.prefixTitles.length,
-      useTitles = this.Config.Settings.useTitles;
-
-    for (i; i < j; i++) {
-      if (useTitles) {
-        TitlesData.PlayerData[playerID].Title = this.Config.prefixTitles[i].title;
-      }
     }
     this.saveData();
   },
@@ -1014,8 +999,6 @@ var RanksAndTitles = {
           displayName = player.displayName,
           useBoth = this.Config.Settings.useBoth,
           formattedMsg = "";
-
-
         if (msg.substring(1, 1) === "/" || msg === "") return null;
 
         if (colorOn && authLevel < 1) {
@@ -1033,7 +1016,7 @@ var RanksAndTitles = {
         if (useBoth && TitlesData.PlayerData[steamID].Prefix !== "") {
           usePrefix = TitlesData.PlayerData[steamID].Prefix + "]</color> ";
           prefixColor = "<color=" + color[1] + ">[";
-        } else if (TitlesData.PlayerData[steamID].Prefix === "") {
+        } else if (!useBoth || TitlesData.PlayerData[steamID].Prefix === "") {
           usePrefix = "";
           prefixColor = "";
         }
@@ -1087,7 +1070,6 @@ var RanksAndTitles = {
         print("------End Server Info------");
         print("-----Start Function Debug-------");
         print("setRankTitle Responding: " + this.setRankTitle("Test"));
-        print("setTitle Responding: " + this.setTitle("Test"));
         print("-------End Function Debug--------");
         print("----End Debug----");
         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.debugRan, "0");
