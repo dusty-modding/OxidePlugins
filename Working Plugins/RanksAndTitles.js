@@ -1,49 +1,33 @@
 var RanksAndTitles = {
-    Title: "Ranks And Titles",
+    Title: "RanksAndTitles",
     Author: "Killparadise",
-    Version: V(1, 5, 0),
+    Version: V(1, 5, 1),
     ResourceId: 830,
     Url: "http://oxidemod.org/resources/ranks-and-titles.830/",
     Init: function() {
         global = importNamespace("");
-        UnityEngine = importNamespace("UnityEngine");
-        this.loadTitleData();
+        this.LoadDefaultConfig();
+        this.getData();
+        this.registerPermissions();
         command.AddChatCommand("rt", this.Plugin, "switchCmd");
     },
 
     OnServerInitialized: function() {
         msgs = this.Config.Messages;
         prefix = this.Config.Prefix;
-        GroupsAPI = plugins.Find('RotAG-Groups');
         chatHandler = plugins.Find('chathandler');
-        clansOn = plugins.Find('RustIOClans');
         if (chatHandler) {
             chatHandler = true;
         } else {
             chatHandler = false;
-        }
-        if (GroupsAPI) {
-            GroupsAPI = true;
-        } else {
-            GroupsAPI = false;
-        }
-        this.updateConfig();
-        this.registerPerms();
-    },
-
-    updateConfig: function() {
-        if (this.Config.Version !== "1.5") {
-            print("[RanksAndTitles] Updating Config, to latest version.");
-            this.LoadDefaultConfig();
-        } else {
-            return false;
         }
     },
 
     LoadDefaultConfig: function() {
         this.Config.authLevel = 2;
         this.Config.Version = "1.5";
-        this.Config.Settings = this.Config.Settings || {
+        this.Config.Settings = this.Config.Settings ||
+        {
             "deBugOff": true,
             "karma": true,
             "colorSupport": true,
@@ -54,15 +38,16 @@ var RanksAndTitles = {
             "chatNameColor": "#1bd228",
             "staffchatNameColor": "#1bd228"
         };
-        this.Config.Punishment = this.Config.Punishment || [{
+        this.Config.Punishment = this.Config.Punishment ||
+        [{
             "rank": 0,
             "multiplier": 2
         }, {
             "rank": 0.5,
             "multiplier": 2.5
         }];
-        this.Config.prefixTitles = this.Config.prefixTitles || [{
-
+        this.Config.prefixTitles = this.Config.prefixTitles ||
+        [{
             "title": "Player",
             "Color": "#FFFFFF",
             "permission": "player"
@@ -81,9 +66,10 @@ var RanksAndTitles = {
         }, {
             "title": "Owner",
             "Color": "#505886",
-            "permission": "owner"
+            "permissions": "owner"
         }];
-        this.Config.main = this.Config.main || [{
+        this.Config.main = this.Config.main ||
+        [{
             "rank": 0,
             "title": "Civilian",
             "karma": 0,
@@ -107,8 +93,9 @@ var RanksAndTitles = {
             "Color": "#0000a0ff",
             "karmaModifier": 1.0,
             "permission": "player"
-        }]
-        this.Config.Permissions = this.Config.Permissions || {
+        }];
+        this.Config.Permissions = this.Config.Permissions ||
+        [
           "canWipe",
           "canSet",
           "canRemove",
@@ -120,13 +107,15 @@ var RanksAndTitles = {
           "canAddKarma",
           "canClear",
           "canHideSelf"
-        }
-        this.Config.Prefix = this.Config.Prefix || {
+        ];
+        this.Config.Prefix = this.Config.Prefix ||
+        {
             "ranks": "Ranks",
             "titles": "Titles",
             "ranksandtitles": "RanksAndTitles"
         };
-        this.Config.Messages = this.Config.Messages || {
+        this.Config.Messages = this.Config.Messages ||
+        {
             "Promoted": "You've been Promoted to: ",
             "NoPlyrs": "No Players Found...",
             "plyrWiped": "Player Wiped!",
@@ -191,6 +180,7 @@ var RanksAndTitles = {
             "/rt kadd playername karma - adds the entered amount of karma to the selected player",
             "/rt krem playername karma - removes the entered amount of karma from the selected player"
         ];
+
     },
 
     /*-----------------------------------------------------------------
@@ -204,36 +194,34 @@ var RanksAndTitles = {
     /*-----------------------------------------------------------------
               All of our data handling
   ------------------------------------------------------------------*/
-    loadTitleData: function() {
+    getData: function() {
         //Lets get our own data and then check to see if theres a groups data file
         TitlesData = data.GetData('RanksandTitles');
         TitlesData = TitlesData || {};
         TitlesData.PlayerData = TitlesData.PlayerData || {};
-        GroupData = data.GetData("Groups");
-        GroupData = GroupData || {};
+        // GroupData = data.GetData("Groups");
+        // GroupData = GroupData || {};
     },
 
     /*-----------------------------------------------------------------
                 Register Plugin Permissions
     ------------------------------------------------------------------*/
 
-    registerPerms: function() {
+    registerPermissions: function() {
         var i = 0,
             ii = 0,
-            iii = 0,
             p = this.Config.Permissions.length,
-            j = this.Config.prefixTitles.length,
-            r = this.Config.main.length;
-        //rank permissions
+            j = this.Config.prefixTitles.length;
+        //prefix permissions
         for (i; i < j; i++) {
             if (!permission.PermissionExists(this.Config.prefixTitles[i].permission)) {
-                permission.RegisterPermission(this.Config.prefixTitles[i].permission, this.Object);
+                permission.RegisterPermission(this.Config.prefixTitles[i].permission, this.Plugin);
             }
         }
         //single permissions
         for (ii; ii < p; ii++) {
           if (!permission.PermissionExists(this.Config.Permissions[ii])) {
-                permission.RegisterPermission(this.Config.Permissions[ii], this.Object);
+                permission.RegisterPermission(this.Config.Permissions[ii], this.Plugin);
             }
         }
     },
@@ -398,7 +386,7 @@ var RanksAndTitles = {
                     this.checkStats(player, cmd, args);
                     break;
                 case "hide":
-                    if (hasPermission(player, perms.canHideSelf)) {
+                    if (this.hasPermission(player, perms.canHideSelf)) {
                         this.hideCmd(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
@@ -406,7 +394,7 @@ var RanksAndTitles = {
                     }
                     break;
                 case "wipe":
-                    if (hasPermission(player, perms.canWipe)) {
+                    if (this.hasPermission(player, perms.canWipe)) {
                         this.wipePlayer(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
@@ -414,9 +402,9 @@ var RanksAndTitles = {
                     }
                     break;
                 case "set":
-                    if (hasPermission(player, perms.canSet) && args.length >= 2) {
+                    if (this.hasPermission(player, perms.canSet) && args.length >= 2) {
                         this.giveTitle(player, cmd, args);
-                    } else if (!hasPermission(player, perms.canSet)) {
+                    } else if (!this.hasPermission(player, perms.canSet)) {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
                         return false;
                     } else {
@@ -425,7 +413,7 @@ var RanksAndTitles = {
                     }
                     break;
                 case "useboth":
-                    if (hasPermission(player, perms.canSwitch)) {
+                    if (this.hasPermission(player, perms.canSwitch)) {
                         if (!this.Config.Settings.useBoth) {
                             this.Config.Settings.useBoth = true;
                         } else {
@@ -437,37 +425,37 @@ var RanksAndTitles = {
                     this.SaveConfig();
                     break;
                 case "kset":
-                    if (args.length >= 1 && hasPermission(player, perms.canSetKarma)) {
+                    if (args.length >= 1 && this.hasPermission(player, perms.canSetKarma)) {
                         this.setKarma(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
                     }
                     break;
                 case "kcheck":
-                    if (args.length >= 1 && hasPermission(player, perms.canCheckKarma)) {
+                    if (args.length >= 1 && this.hasPermission(player, perms.canCheckKarma)) {
                         this.checkKarma(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
                     }
                     break;
                 case "kadd":
-                    if (args.length >= 1 && hasPermission(player, perms.canAddKarma)) {
+                    if (args.length >= 1 && this.hasPermission(player, perms.canAddKarma)) {
                         this.addKarma(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
                     }
                     break;
                 case "krem":
-                    if (args.length >= 1 && hasPermission(player, perms.canRemKarma)) {
+                    if (args.length >= 1 && this.hasPermission(player, perms.canRemKarma)) {
                         this.removeKarma(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
                     }
                     break;
                 case "remove":
-                    if (hasPermission(player, perms.canRemove) && args.length >= 1) {
+                    if (this.hasPermission(player, perms.canRemove) && args.length >= 1) {
                         this.removeTitle(player, cmd, args);
-                    } else if (!hasPermission(player, perms.canRemove)) {
+                    } else if (!this.hasPermission(player, perms.canRemove)) {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
                         return false;
                     } else {
@@ -476,7 +464,7 @@ var RanksAndTitles = {
                     }
                     break;
                 case "clear":
-                    if (hasPermission(player, perms.canClear)) {
+                    if (this.hasPermission(player, perms.canClear)) {
                         this.clearData(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
@@ -487,7 +475,7 @@ var RanksAndTitles = {
                     this.refreshData(player, cmd, args);
                     break;
                 case "noadmin":
-                    if (hasPermission(player, perms.canHide)) {
+                    if (this.hasPermission(player, perms.canHide)) {
                         this.noAdmin(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
@@ -497,7 +485,7 @@ var RanksAndTitles = {
                     this.rtHelp(player, cmd, args);
                     break;
                 default:
-                    if (!useTitles && TitlesData.PlayerData[steamID] !== undefined) {
+                    if (TitlesData.PlayerData[steamID] !== undefined) {
                         rust.SendChatMessage(player, prefix.ranks, msgs.rank + TitlesData.PlayerData[steamID].Rank + " (" + TitlesData.PlayerData[steamID].Title + ")", "0");
                         rust.SendChatMessage(player, prefix.ranks, msgs.userprefix + TitlesData.PlayerData[steamID].Prefix, "0");
                     } else {
@@ -902,6 +890,7 @@ var RanksAndTitles = {
     //it will then send back the found color for the chat function to use.
     getColor: function(steamID) {
         var i = 0,
+            titleColor,
             colorArr = [],
             j = 0;
         if (!this.Config.Settings.useBoth) {
@@ -914,7 +903,7 @@ var RanksAndTitles = {
         } else {
             for (i; i < this.Config.main.length; i++) {
                 if (TitlesData.PlayerData[steamID].Title === this.Config.main[i].title) {
-                    var titleColor = this.Config.main[i].Color;
+                    titleColor = this.Config.main[i].Color;
                     colorArr.push(titleColor);
                 }
             }
@@ -925,51 +914,15 @@ var RanksAndTitles = {
                 }
             }
         }
-        print(colorArr[0] + " : " + colorArr[1]);
+        if (!chatHandler) {
         return colorArr;
+      } else {
+        return titleColor;
+      }
     },
 
     grabPlayerData: function(steamID, key) {
         return TitlesData.PlayerData[steamID][key];
-    },
-
-    buildChat: function(msg, player) {
-        var colorOn = this.Config.Settings.colorSupport,
-            color = this.getColor(steamID),
-            displayName = player.displayName,
-            useBoth = this.Config.Settings.useBoth,
-            authLevel = player.net.connection.authLevel,
-            steamID = rust.UserIDFromPlayer(player);
-
-        if (colorOn && authLevel < 1) {
-            useColor = "<color=" + this.Config.Settings.chatNameColor + ">";
-        } else {
-            useColor = "<color=" + this.Config.Settings.staffchatNameColor + ">";
-        }
-
-        if (colorOn) {
-            titleColor = "<color=" + color[0] + ">[";
-        } else {
-            titleColor = "";
-        }
-
-        if (useBoth && TitlesData.PlayerData[steamID].Prefix !== "") {
-            usePrefix = TitlesData.PlayerData[steamID].Prefix + "]</color> ";
-            prefixColor = "<color=" + color[1] + ">[";
-        } else if (!useBoth || TitlesData.PlayerData[steamID].Prefix === "") {
-            usePrefix = "";
-            prefixColor = "";
-        }
-
-        if (TitlesData.PlayerData[steamID].hidden) {
-            usePrefix = "";
-            useTitle = "";
-        } else {
-            useTitle = TitlesData.PlayerData[steamID].Title + "]</color>: ";
-        }
-
-        formattedMsg = prefixColor + usePrefix + useColor + displayName + "</color> " + titleColor + useTitle + msg;
-        return formattedMsg;
     },
 
     //Our char function is called whenever a chat message is sent, it grabs a slew of information including, player files, the message
@@ -978,21 +931,55 @@ var RanksAndTitles = {
     //if its not enabled then it will send a default message with the players assigned title without the color.
     //We have to make sure we return false afterwards or else we will get double chat messages with every chat sent.
     OnPlayerChat: function(arg) {
-        try {
+      try {
+
             if (!chatHandler) {
                 var player = arg.connection.player,
+                    steamID = rust.UserIDFromPlayer(player),
                     msg = arg.GetString(0, "text");
                 if (msg.substring(1, 1) === "/" || msg === "") return null;
 
-                formattedMsg = buildChat(msg, player);
+                var colorOn = this.Config.Settings.colorSupport,
+                    color = this.getColor(steamID),
+                    displayName = player.displayName,
+                    useBoth = this.Config.Settings.useBoth,
+                    authLevel = player.net.connection.authLevel;
+
+                if (colorOn && authLevel < 1) {
+                    useColor = "<color=" + this.Config.Settings.chatNameColor + ">";
+                } else {
+                    useColor = "<color=" + this.Config.Settings.staffchatNameColor + ">";
+                }
+
+                if (colorOn) {
+                    titleColor = "<color=" + color[0] + ">[";
+                } else {
+                    titleColor = "";
+                }
+
+                if (useBoth && TitlesData.PlayerData[steamID].Prefix !== "") {
+                    usePrefix = TitlesData.PlayerData[steamID].Prefix + "]</color> ";
+                    prefixColor = "<color=" + color[1] + ">[";
+                } else if (!useBoth || TitlesData.PlayerData[steamID].Prefix === "") {
+                    usePrefix = "";
+                    prefixColor = "";
+                }
+
+                if (TitlesData.PlayerData[steamID].hidden) {
+                    usePrefix = "";
+                    useTitle = "";
+                } else {
+                    useTitle = TitlesData.PlayerData[steamID].Title + "]</color>: ";
+                }
+                formattedMsg = prefixColor + usePrefix + useColor + displayName + "</color> " + titleColor + useTitle + msg;
                 global.ConsoleSystem.Broadcast("chat.add", steamID, formattedMsg);
                 print(player.displayName + ": " + msg);
                 return false;
             } else {
                 return null;
             }
-        } catch (e) {
+          } catch (e) {
             print(e.message.toString());
-        }
+          }
     },
 };
