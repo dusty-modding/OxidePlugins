@@ -1,0 +1,38 @@
+{
+    "config": {}, //source update config object put special configurations here.
+    "New": [{
+            "property": "test",
+            "addition": 1,
+            "type": "array",
+            "message": "added 1"
+        }, //add property "test" and set it to 1
+        {
+            "property": "test",
+            "addition": 0,
+            "type": "array",
+            "message": "added 0"
+        }
+    ],
+    "Updates": [{
+            "property": "test",
+            "changeStart": 1,
+            "changeEnd": 0,
+            "type": "array",
+            "message": "Changed 1 -> 0"
+        }, //single property/object
+        {
+            "property": "test.newtest",
+            "changeStart": 0,
+            "changeEnd": 1,
+            "type": "array",
+            "message": "Changed 0 -> 1"
+        } //propety within the property
+    ],
+    "Fixes": [{
+        "property": "test",
+        "fixStart": 1,
+        "fixEnd": 0,
+        "type": "object",
+        "message": "Fixed 1 -> 0"
+    }] //finds the test property and changes 1 to 0 inside an object
+}

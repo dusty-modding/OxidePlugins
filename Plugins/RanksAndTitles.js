@@ -1,7 +1,7 @@
 var RanksAndTitles = {
     Title: "RanksAndTitles",
     Author: "Killparadise",
-    Version: V(1, 5, 1),
+    Version: V(1, 5, 2),
     ResourceId: 830,
     Url: "http://oxidemod.org/resources/ranks-and-titles.830/",
     Init: function() {
@@ -23,11 +23,76 @@ var RanksAndTitles = {
         }
     },
 
+    //This function is manually updated by me to apply new changes to the config file, 
+    //This will automatically push new updates into the config for the user
+    sourceUpdate: function() {
+        var count = 0;
+        if (this.Config.Version !== "1.6") {
+            this.Config.Version = "1.6"
+            this.Config.Messages.upToDate = "The config is already up to date!";
+            this.Config.Messages.configFin = "Config finished update!";
+            count += 3
+
+            for (var i = 0; i < this.Config.prefixTitles.length; i++) {
+                if (this.Config.prefixTitles[i].title === "Owner") {
+                    print("Updating prefixTitles Object... Applying Patch.");
+                    this.Config.prefixTitles[i].permission = this.Config.prefixTitles[i].permissions;
+                    delete this.Config.prefixTitles[i].permissions;
+                    print("Fixed: permissions -> permission");
+                    print("--------------------------------------");
+                    break;
+                }
+            }
+            count++;
+
+            if (this.Config.AdminHelp < 12) {
+                print("Updating Admin Help messages...")
+                this.Config.AdminHelp.push("/rt create rankname rank karmaneeded killsneeded karmagiven color permissions - create a new rank",
+                    "/rt create prefixname color permission",
+                    "/rt delete rankname - delete a rank", "/rt update - updates the config");
+                print("Added: /rt create");
+                print("Added: /rt delete");
+                print("Added: /rt update");
+                print("--------------------------------------");
+                count++;
+            }
+
+            if (this.Config.Permissions >= 0) {
+                print("Updating Permissions... Adding new permissions...");
+                this.Config.Permissions.push("canCreate", "canDelete", "isStaff");
+                print("Added: canCreate");
+                print("Added: canDelete");
+                print("Added: isStaff");
+                print("--------------------------------------");
+                count++;
+            }
+
+            for (var j = 0; j < this.Config.AdminHelp.length; j++) {
+                if (this.Config.AdminHelp[j] === "/rt switch - switch titles only mode on and off, this will use config title automatically without Ranks system") {
+                    this.Config.AdminHelp[j] = "/rt useboth - switch prefixes on and off";
+                    print("Updated /rt switch message to new useboth message...");
+                    count++;
+                    break;
+                }
+            }
+            this.Config.Messages.rankCreated = "<color=green>New Rank {rank} Created!</color>";
+            count++;
+            this.Config.Messages.rankDel = "<color=green>{rank} has been deleted!</color>";
+            count++;
+            this.Config.Messages.crtPrefix = "<color=green>{prefix} has been created!</color>";
+            count++;
+            this.SaveConfig();
+            rust.SendChatMessage(player, prefix.ranks, msgs.configFin.replace("{count}", count), "0");
+        } else {
+            rust.SendChatMessage(player, prefix.ranks, msgs.upToDate, "0");
+            return false;
+        }
+    },
+
     LoadDefaultConfig: function() {
         this.Config.authLevel = 2;
-        this.Config.Version = "1.5";
-        this.Config.Settings = this.Config.Settings ||
-        {
+        this.Config.Version = "1.6";
+        this.Config.Settings = this.Config.Settings || {
             "deBugOff": true,
             "karma": true,
             "colorSupport": true,
@@ -38,16 +103,14 @@ var RanksAndTitles = {
             "chatNameColor": "#1bd228",
             "staffchatNameColor": "#1bd228"
         };
-        this.Config.Punishment = this.Config.Punishment ||
-        [{
+        this.Config.Punishment = this.Config.Punishment || [{
             "rank": 0,
             "multiplier": 2
         }, {
             "rank": 0.5,
             "multiplier": 2.5
         }];
-        this.Config.prefixTitles = this.Config.prefixTitles ||
-        [{
+        this.Config.prefixTitles = this.Config.prefixTitles || [{
             "title": "Player",
             "Color": "#FFFFFF",
             "permission": "player"
@@ -66,10 +129,9 @@ var RanksAndTitles = {
         }, {
             "title": "Owner",
             "Color": "#505886",
-            "permissions": "owner"
+            "permission": "owner"
         }];
-        this.Config.main = this.Config.main ||
-        [{
+        this.Config.main = this.Config.main || [{
             "rank": 0,
             "title": "Civilian",
             "karma": 0,
@@ -94,28 +156,28 @@ var RanksAndTitles = {
             "karmaModifier": 1.0,
             "permission": "player"
         }];
-        this.Config.Permissions = this.Config.Permissions ||
-        [
-          "canWipe",
-          "canSet",
-          "canRemove",
-          "canHide",
-          "canSwitch",
-          "canSetKarma",
-          "canCheckKarma",
-          "canRemKarma",
-          "canAddKarma",
-          "canClear",
-          "canHideSelf"
+        this.Config.Permissions = this.Config.Permissions || [
+            "canWipe",
+            "canSet",
+            "canRemove",
+            "canHide",
+            "canSwitch",
+            "canSetKarma",
+            "canCheckKarma",
+            "canRemKarma",
+            "canAddKarma",
+            "canClear",
+            "canHideSelf",
+            "canCreate",
+            "canDelete",
+            "isStaff"
         ];
-        this.Config.Prefix = this.Config.Prefix ||
-        {
+        this.Config.Prefix = this.Config.Prefix || {
             "ranks": "Ranks",
             "titles": "Titles",
             "ranksandtitles": "RanksAndTitles"
         };
-        this.Config.Messages = this.Config.Messages ||
-        {
+        this.Config.Messages = this.Config.Messages || {
             "Promoted": "You've been Promoted to: ",
             "NoPlyrs": "No Players Found...",
             "plyrWiped": "Player Wiped!",
@@ -160,7 +222,12 @@ var RanksAndTitles = {
             "checkFailed": "Check failed..",
             "addKarma": "Karma added to player successfully",
             "removeKarma": "Karma removed from player successfully",
-            "punishMsg": "You've killed a rankName you've lost an extra karmaAmt Karma!"
+            "punishMsg": "You've killed a rankName you've lost an extra karmaAmt Karma!",
+            "upToDate": "The config is already up to date!",
+            "configFin": "Config finished update! Updated: {count} objects!",
+            "rankCreated": "<color=green>New Rank {rank} Created!</color>",
+            "rankDel": "<color=green>{rank} has been deleted!</color>",
+            "crtPrefix": "<color=green>{prefix} has been created!</color>"
         };
         this.Config.Help = this.Config.Help || [
 
@@ -173,12 +240,16 @@ var RanksAndTitles = {
             "/rt wipe playername - Wipes the sleceted players Kills, Deaths, KDR, and Karma",
             "/rt set playername title - Sets a custom title to the selected player, this must be a title in config (NOT RANK)",
             "/rt remove playername - removes a given players custom title, and sets them back into the ransk tree",
-            "/rt switch - switch titles only mode on and off, this will use config title automatically without Ranks system",
+            "/rt useboth - switch prefixes on and off",
             "/rt noadmin - Removes admins (auth 2 or higher) from ranks system no kills, or ranks will be given.",
             "/rt kset playername karma - set a selected players karma level",
             "/rt kcheck playername - check the selected players karma",
             "/rt kadd playername karma - adds the entered amount of karma to the selected player",
-            "/rt krem playername karma - removes the entered amount of karma from the selected player"
+            "/rt krem playername karma - removes the entered amount of karma from the selected player",
+            "/rt create rankname rank karmaneeded killsneeded karmagiven color permissions - create a new rank",
+            "/rt create prefixname color permission",
+            "/rt delete rankname - delete a rank",
+            "/rt update - updates the config"
         ];
 
     },
@@ -220,7 +291,7 @@ var RanksAndTitles = {
         }
         //single permissions
         for (ii; ii < p; ii++) {
-          if (!permission.PermissionExists(this.Config.Permissions[ii])) {
+            if (!permission.PermissionExists(this.Config.Permissions[ii])) {
                 permission.RegisterPermission(this.Config.Permissions[ii], this.Plugin);
             }
         }
@@ -249,7 +320,7 @@ var RanksAndTitles = {
             var authLvl = player.net.connection.authLevel;
             TitlesData.PlayerData[steamID] = TitlesData.PlayerData[steamID] || {};
             TitlesData.PlayerData[steamID].PlayerID = TitlesData.PlayerData[steamID].PlayerID || steamID;
-            TitlesData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName || this.getName(player);
+            TitlesData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName || player.displayName;
             TitlesData.PlayerData[steamID].Title = TitlesData.PlayerData[steamID].Title || "";
             TitlesData.PlayerData[steamID].Prefix = TitlesData.PlayerData[steamID].Prefix || "";
             TitlesData.PlayerData[steamID].Rank = TitlesData.PlayerData[steamID].Rank || 0;
@@ -303,7 +374,6 @@ var RanksAndTitles = {
     //Find player by name this supports partial names, full names, and steamIDs its also case-insensitive
     findPlayerByName: function(player, args) {
         try {
-            var global = importNamespace("");
             var found = [],
                 foundID;
             var playerName = args[1].toLowerCase();
@@ -366,15 +436,6 @@ var RanksAndTitles = {
 
     //This is our switch case statement this is called by /rt it then grabs the second word in the text and compares it to one below
     //if a match is found, it will launch that function accordingly.
-    /*"canWipe",
-          "canSet",
-          "canRemove",
-          "canHide",
-          "canSwitch",
-          "canSetKarma",
-          "canCheckKarma",
-          "canRemKarma",
-          "canAddKarma"*/
     switchCmd: function(player, cmd, args) {
         try {
             var steamID = rust.UserIDFromPlayer(player),
@@ -484,6 +545,24 @@ var RanksAndTitles = {
                 case "help":
                     this.rtHelp(player, cmd, args);
                     break;
+                case "create":
+                    if (this.hasPermission(player, perms.canCreate)) {
+                        this.createRank(player, cmd, args);
+                    } else {
+                        rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
+                    }
+                case "delete":
+                    if (this.hasPermission(player, perms.canDelete)) {
+                        this.deleteRank(player, cmd, args);
+                    } else {
+                        rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
+                    }
+                case "update":
+                    if (this.hasPermission(player, perms.canUpdate)) {
+                        this.updateConfig(player, cmd, args);
+                    } else {
+                        rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
+                    }
                 default:
                     if (TitlesData.PlayerData[steamID] !== undefined) {
                         rust.SendChatMessage(player, prefix.ranks, msgs.rank + TitlesData.PlayerData[steamID].Rank + " (" + TitlesData.PlayerData[steamID].Title + ")", "0");
@@ -632,7 +711,7 @@ var RanksAndTitles = {
 
     /*-----------------------------------------------------------------
                       Grab Karma and Karma Commands
-  ------------------------------------------------------------------*/
+    ------------------------------------------------------------------*/
 
     //A simple function to allow our users to set custom karma modifiers for each rank this searches our config file
     //for karmaModifier to the matching title of the killed players ID it then send the found number back to the death function
@@ -715,7 +794,7 @@ var RanksAndTitles = {
 
     /*-----------------------------------------------------------------
                        Command Handling
-  ------------------------------------------------------------------*/
+    ------------------------------------------------------------------*/
 
     setKarma: function(player, cmd, args) {
         var getPlayer = this.findPlayerByName(player, args);
@@ -801,6 +880,49 @@ var RanksAndTitles = {
         }
     },
 
+    //Function to create new ranks or prefixes in game with a heavy command
+    createRank: function(player, cmd, args) {
+        var temp = {}
+
+        if (args.length === 3) {
+            temp = {
+                "title": args[0].toString() || "default",
+                "Color": args[1].toString() || "#FFFFFF",
+                "permission": args[2].toString() || "player"
+            }
+            this.Config.prefixTitles.push(temp);
+            rust.SendChatMessage(player, prefix.ranks, msgs.crtPrefix.replace("{prefix}", temp.title), "0");
+        } else if (args.length <= 6) {
+            rust.SendChatMessage(player, prefix.ranks, msgs.crtBadLen, "0");
+        } else {
+            temp = {
+                "rank": Number(args[1]) || 1,
+                "title": args[0].toString() || "default",
+                "karma": Number(args[2]) || 1,
+                "killsNeeded": Number(args[3]) || 0,
+                "Color": args[5].toString() || "#FFFFFF",
+                "karmaModifier": Number(args[4]) || 1,
+                "permission": args[6].toString() || "player"
+            }
+            this.Config.main.push(temp);
+            rust.SendChatMessage(player, prefix.ranks, msgs.rankCreated.replace("{rank}", temp.title), "0");
+        }
+        this.SaveConfig();
+    },
+
+    //Deletes exsisting ranks by splicing them out of the config
+    deleteRank: function(player, cmd, args) {
+        var i = 0, j = this.Config.main.length, rank = args[1].toString();
+        for (i; i < j; i++) {
+            if (rank === this.Config.main[i].title) {
+                var name = this.Config.main[i].title;
+                return this.Config.main.splice(i, 1);
+            }
+        }
+        rust.SendChatMessage(player, prefix.ranks, msgs.rankDel.replace("{rank}", name), "0");
+        return false;
+    },
+
     //This function is used by the remove command, when called it will find the target player
     //grab his file, and then set his title to nothing. It will then run him through the hub function
     //to set his new ranks title instead. This is so if a player with a custom title wishes to
@@ -883,8 +1005,8 @@ var RanksAndTitles = {
     },
 
     /*-----------------------------------------------------------------
-                          Chat Handling(New)
-  ------------------------------------------------------------------*/
+                          Chat Handling
+    ------------------------------------------------------------------*/
 
     //This function is used by playerchat to grab the correct colors for the rank, or title used by the player
     //it will then send back the found color for the chat function to use.
@@ -915,10 +1037,10 @@ var RanksAndTitles = {
             }
         }
         if (!chatHandler) {
-        return colorArr;
-      } else {
-        return titleColor;
-      }
+            return colorArr;
+        } else {
+            return titleColor;
+        }
     },
 
     grabPlayerData: function(steamID, key) {
@@ -931,7 +1053,7 @@ var RanksAndTitles = {
     //if its not enabled then it will send a default message with the players assigned title without the color.
     //We have to make sure we return false afterwards or else we will get double chat messages with every chat sent.
     OnPlayerChat: function(arg) {
-      try {
+        try {
 
             if (!chatHandler) {
                 var player = arg.connection.player,
@@ -945,7 +1067,7 @@ var RanksAndTitles = {
                     useBoth = this.Config.Settings.useBoth,
                     authLevel = player.net.connection.authLevel;
 
-                if (colorOn && authLevel < 1) {
+                if (colorOn && hasPermission(player, this.Config.Permissions.isStaff)) {
                     useColor = "<color=" + this.Config.Settings.chatNameColor + ">";
                 } else {
                     useColor = "<color=" + this.Config.Settings.staffchatNameColor + ">";
@@ -978,8 +1100,8 @@ var RanksAndTitles = {
             } else {
                 return null;
             }
-          } catch (e) {
+        } catch (e) {
             print(e.message.toString());
-          }
+        }
     },
 };
