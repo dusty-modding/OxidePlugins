@@ -1,12 +1,12 @@
 var RanksAndTitles = {
     Title: "RanksAndTitles",
     Author: "Killparadise",
-    Version: V(1, 5, 2),
+    Version: V(1, 5, 3),
     ResourceId: 830,
     Url: "http://oxidemod.org/resources/ranks-and-titles.830/",
     Init: function() {
         global = importNamespace("");
-        this.LoadDefaultConfig();
+        this.updateConfig();
         this.getData();
         this.registerPermissions();
         command.AddChatCommand("rt", this.Plugin, "switchCmd");
@@ -23,15 +23,40 @@ var RanksAndTitles = {
         }
     },
 
-    //This function is manually updated by me to apply new changes to the config file, 
+    //This function is manually updated by me to apply new changes to the config file,
     //This will automatically push new updates into the config for the user
-    sourceUpdate: function() {
+    updateConfig: function(player, cmd, args) {
         var count = 0;
-        if (this.Config.Version !== "1.6") {
-            this.Config.Version = "1.6"
+
+        if (this.Config.Version !== "1.6.1" && this.Config.Version === "1.6") {
+            this.Config.Version = "1.6.1";
+            print("Upating to v1.6.1...");
+            for (var i = 0; i < this.Config.prefixTitles.length; i++) {
+                this.Config.prefixTitles[i].default = false;
+                print("Adding default value too: " + this.Config.prefixTitles[i].title);
+                count++;
+            }
+            this.Config.Settings.dropRank = false;
+            print("Adding dropRank Value...");
+            count++;
+
+            for (var ii = 0; ii < this.Config.AdminHelp.length; ii++) {
+                if (this.Config.AdminHelp[ii] === "/rt update - updates the config") {
+                    this.Config.AdminHelp.splice(ii, 1);
+                    print("Removed message form Admin Help...");
+                    count++;
+                }
+            }
+
+            print("------Config Updated to v1.6.1------");
+            print("Changed " + count + " Objects");
+
+        } else if (this.Config.Version !== "1.6") {
+            print("WARNING: Config not at version 1.6, Running 1.6 update...");
+            this.Config.Version = "1.6";
             this.Config.Messages.upToDate = "The config is already up to date!";
             this.Config.Messages.configFin = "Config finished update!";
-            count += 3
+            count += 3;
 
             for (var i = 0; i < this.Config.prefixTitles.length; i++) {
                 if (this.Config.prefixTitles[i].title === "Owner") {
@@ -46,7 +71,7 @@ var RanksAndTitles = {
             count++;
 
             if (this.Config.AdminHelp < 12) {
-                print("Updating Admin Help messages...")
+                print("Updating Admin Help messages...");
                 this.Config.AdminHelp.push("/rt create rankname rank karmaneeded killsneeded karmagiven color permissions - create a new rank",
                     "/rt create prefixname color permission",
                     "/rt delete rankname - delete a rank", "/rt update - updates the config");
@@ -82,22 +107,27 @@ var RanksAndTitles = {
             this.Config.Messages.crtPrefix = "<color=green>{prefix} has been created!</color>";
             count++;
             this.SaveConfig();
-            rust.SendChatMessage(player, prefix.ranks, msgs.configFin.replace("{count}", count), "0");
+            print("Config updated to v1.6");
+            print("Changed " + count + " Objects");
+            print("Starting v1.6.1 update");
+            this.updateConfig();
         } else {
-            rust.SendChatMessage(player, prefix.ranks, msgs.upToDate, "0");
+            print("Config already at latest version: v" + this.Config.Version);
             return false;
         }
+        this.SaveConfig();
     },
 
     LoadDefaultConfig: function() {
         this.Config.authLevel = 2;
-        this.Config.Version = "1.6";
+        this.Config.Version = "1.6.1";
         this.Config.Settings = this.Config.Settings || {
             "deBugOff": true,
             "karma": true,
             "colorSupport": true,
             "noAdmin": false,
             "useBoth": true,
+            "dropRank": false,
             "useRanksPerms": false,
             "usePunishSystem": true,
             "chatNameColor": "#1bd228",
@@ -110,26 +140,32 @@ var RanksAndTitles = {
             "rank": 0.5,
             "multiplier": 2.5
         }];
-        this.Config.prefixTitles = this.Config.prefixTitles || [{
+        this.Config.prefixTitles = this.Config.prefixTitles || 
+        [{
             "title": "Player",
             "Color": "#FFFFFF",
-            "permission": "player"
+            "permission": "player",
+            "default": true
         }, {
             "title": "Donor",
             "Color": "#ffa500ff",
-            "permission": "donor"
+            "permission": "donor",
+            "default": false
         }, {
             "title": "Mod",
             "Color": "#add8e6ff",
-            "permission": "mod"
+            "permission": "mod",
+            "default": false
         }, {
             "title": "Admin",
             "Color": "#800000ff",
-            "permission": "admin"
+            "permission": "admin",
+            "default": false
         }, {
             "title": "Owner",
             "Color": "#505886",
-            "permission": "owner"
+            "permission": "owner",
+            "default": false
         }];
         this.Config.main = this.Config.main || [{
             "rank": 0,
@@ -551,18 +587,14 @@ var RanksAndTitles = {
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
                     }
+                    break;
                 case "delete":
                     if (this.hasPermission(player, perms.canDelete)) {
                         this.deleteRank(player, cmd, args);
                     } else {
                         rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
                     }
-                case "update":
-                    if (this.hasPermission(player, perms.canUpdate)) {
-                        this.updateConfig(player, cmd, args);
-                    } else {
-                        rust.SendChatMessage(player, prefix.ranksandtitles, msgs.noPerms, "0");
-                    }
+                    break;
                 default:
                     if (TitlesData.PlayerData[steamID] !== undefined) {
                         rust.SendChatMessage(player, prefix.ranks, msgs.rank + TitlesData.PlayerData[steamID].Rank + " (" + TitlesData.PlayerData[steamID].Title + ")", "0");
@@ -682,7 +714,7 @@ var RanksAndTitles = {
 
             if (useBoth) {
                 for (var t = 0; t < this.Config.prefixTitles.length; t++) {
-                    if (TitlesData.PlayerData[playerID].Prefix === "" && this.Config.prefixTitles[t].title === "Player") {
+                    if (TitlesData.PlayerData[playerID].Prefix === "" && this.Config.prefixTitles[t].default) {
                         TitlesData.PlayerData[playerID].Prefix = this.Config.prefixTitles[t].title;
                     }
 
@@ -695,7 +727,7 @@ var RanksAndTitles = {
 
     /*-----------------------------------------------------------------
               Check for promotions
-  ------------------------------------------------------------------*/
+    ------------------------------------------------------------------*/
 
     //This is called by our main hub if a players rank increases it will display the message "you've been promoted!"
     //this may not exist for long and may be merged into the main hub function soon.
@@ -882,28 +914,28 @@ var RanksAndTitles = {
 
     //Function to create new ranks or prefixes in game with a heavy command
     createRank: function(player, cmd, args) {
-        var temp = {}
+        var temp = {};
 
-        if (args.length === 3) {
+        if (args.length === 4) {
+          print(args[1] + " " + args[2] + " " + args[3]);
             temp = {
-                "title": args[0].toString() || "default",
-                "Color": args[1].toString() || "#FFFFFF",
-                "permission": args[2].toString() || "player"
-            }
+                "title": args[1].toString() || "default",
+                "Color": args[2].toString() || "#FFFFFF",
+                "permission": args[3].toString() || "player"
+            };
             this.Config.prefixTitles.push(temp);
             rust.SendChatMessage(player, prefix.ranks, msgs.crtPrefix.replace("{prefix}", temp.title), "0");
-        } else if (args.length <= 6) {
-            rust.SendChatMessage(player, prefix.ranks, msgs.crtBadLen, "0");
-        } else {
+        } else if (args.length >= 6){
+          print(args[1] + " " + args[2] + " " + args[3]);
             temp = {
-                "rank": Number(args[1]) || 1,
-                "title": args[0].toString() || "default",
-                "karma": Number(args[2]) || 1,
-                "killsNeeded": Number(args[3]) || 0,
-                "Color": args[5].toString() || "#FFFFFF",
+                "rank": Number(args[2]) || 1,
+                "title": args[1].toString() || "default",
+                "karma": Number(args[3]) || 1,
+                "killsNeeded": Number(args[4]) || 0,
+                "Color": args[6].toString() || "#FFFFFF",
                 "karmaModifier": Number(args[4]) || 1,
-                "permission": args[6].toString() || "player"
-            }
+                "permission": args[7].toString() || "player"
+            };
             this.Config.main.push(temp);
             rust.SendChatMessage(player, prefix.ranks, msgs.rankCreated.replace("{rank}", temp.title), "0");
         }
@@ -915,7 +947,7 @@ var RanksAndTitles = {
         var i = 0, j = this.Config.main.length, rank = args[1].toString();
         for (i; i < j; i++) {
             if (rank === this.Config.main[i].title) {
-                var name = this.Config.main[i].title;
+                name = this.Config.main[i].title;
                 return this.Config.main.splice(i, 1);
             }
         }
@@ -1018,8 +1050,8 @@ var RanksAndTitles = {
         if (!this.Config.Settings.useBoth) {
             for (i; i < this.Config.main.length; i++) {
                 if (TitlesData.PlayerData[steamID].Title === this.Config.main[i].title) {
-                    var color = this.Config.main[i].Color;
-                    colorArr.push(color);
+                    var titleColor = this.Config.main[i].Color;
+                    colorArr.push(titleColor);
                 }
             }
         } else {
@@ -1067,7 +1099,7 @@ var RanksAndTitles = {
                     useBoth = this.Config.Settings.useBoth,
                     authLevel = player.net.connection.authLevel;
 
-                if (colorOn && hasPermission(player, this.Config.Permissions.isStaff)) {
+                if (colorOn && this.hasPermission(player, this.Config.Permissions.isStaff)) {
                     useColor = "<color=" + this.Config.Settings.chatNameColor + ">";
                 } else {
                     useColor = "<color=" + this.Config.Settings.staffchatNameColor + ">";
@@ -1093,6 +1125,12 @@ var RanksAndTitles = {
                 } else {
                     useTitle = TitlesData.PlayerData[steamID].Title + "]</color>: ";
                 }
+
+                if (this.Config.Settings.dropRank) {
+                    useTitle = "";
+                    titleColor = "";
+                }
+
                 formattedMsg = prefixColor + usePrefix + useColor + displayName + "</color> " + titleColor + useTitle + msg;
                 global.ConsoleSystem.Broadcast("chat.add", steamID, formattedMsg);
                 print(player.displayName + ": " + msg);

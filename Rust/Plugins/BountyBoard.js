@@ -12,11 +12,9 @@ var BountyBoard = {
 
 	OnServerInitialized: function() {
 		this.msgs = this.Config.Messages;
-		this.timerHolder;
 		this.prefix = this.Config.Prefix;
 		friendsAPI = plugins.Find('0friendsAPI');
-		clansOn = plugins.Find('RustIOClans');
-		GroupsAPI = plugins.Find('RotAG-Groups');
+		clansOn = plugins.Find('Clans');
 		this.updateConfig();
 		command.AddChatCommand("bty", this.Plugin, "cmdBounty");
 		command.AddChatCommand("tester", this.Plugin, "runCheck");
@@ -24,7 +22,7 @@ var BountyBoard = {
 
 	updateConfig: function() {
             if (this.Config.Version !== "1.2") {
-                print("[BountyBoard] Updating Config, to latest version.")
+                print("[BountyBoard] Updating Config, to latest version.");
                 this.LoadDefaultConfig();
             } else {
                 return false;
@@ -188,6 +186,7 @@ var BountyBoard = {
 						rust.SendChatMessage(player, this.prefix, this.msgs.invSyn.replace("{cmd}", "/bty arg"), "0");
 						return false;
 					}
+					break;
 				default:
 					if (BountyData.PlayerData[steamID] === undefined) {
 						print("Player Data not Found for " + steamID + " Attempting to build");
@@ -202,7 +201,7 @@ var BountyBoard = {
 					break;
 			}
 		} catch (e) {
-			print(e.message.toString())
+			print(e.message.toString());
 		}
 	},
 
@@ -214,14 +213,14 @@ var BountyBoard = {
 			this.getData();
 			rust.SendChatMessage(player, this.prefix, this.msgs.resetData, "0");
 		} catch (e) {
-			print(e.message.toString())
+			print(e.message.toString());
 		}
 	},
 
 	setTarget: function(player, cmd, args) {
+		var pName = this.findPlayerByName(player, args);
+		var steamID = rust.UserIDFromPlayer(player);
 		if (args.length === 2) {
-			var pName = this.findPlayerByName(player, args);
-			var steamID = rust.UserIDFromPlayer(player);
 		} else if (args.length === 1) {
 			rust.SendChatMessage(player, this.prefix, this.msgs.curTar, "0");
 		} else {
@@ -259,8 +258,8 @@ var BountyBoard = {
 			var targetPlayer = this.findPlayerByName(player, args);
 			if (!BountyData.PlayerData[targetPlayer[1]]) this.checkPlayerData(targetPlayer[0]);
 			while (mainList.MoveNext()) {
-				var name = mainList.Current.info.shortname,
-					amount = mainList.Current.amount,
+					name = mainList.Current.info.shortname;
+					amount = mainList.Current.amount;
 					condition = mainList.Current.condition;
 				if (name === argObj.itemName && argObj.amt <= amount && argObj.amt <= this.Config.Settings.maxBounty && argObj.amt > 0) {
 					break;
@@ -289,12 +288,12 @@ var BountyBoard = {
 			var rplObj = {
 				"rss": argObj.amt + " " + argObj.itemName,
 				"plyr": targetPlayer[0].displayName
-			}
+			};
 			rust.SendChatMessage(targetPlayer[0], this.prefix, this.msgs.btyPlaced.replace("{bty}", argObj.amt + " " + argObj.itemName), "0");
 			rust.SendChatMessage(player, this.prefix, this.msgs.btySet.replace("{bty}", argObj.amt + " " + argObj.itemName), "0");
 			rust.BroadcastChat(this.prefix, this.msgs.boardcastBty.replace(/rss|plyr/gi, function(matched) {
-				return rplObj[matched]
-			}), "0")
+				return rplObj[matched];
+			}), "0");
 			if (argObj.amt > amount) {
 				rust.SendChatMessage(player, this.prefix, this.msgs.notEnough.replace("{RssName}", argObj.itemName), "0");
 				return false;
@@ -302,7 +301,7 @@ var BountyBoard = {
 			this.saveData();
 			this.updateBoard(targetPlayer[1], false, argObj.amt, argObj.itemName);
 		} catch (e) {
-			print(e.message.toString())
+			print(e.message.toString());
 		}
 	},
 
@@ -383,7 +382,7 @@ var BountyBoard = {
 		try {
 			itemName = itemName.toLowerCase();
 			var definition = global.ItemManager.FindItemDefinition(itemName);
-			if (definition == null) return print("Unable to Find an Item for Bounty.");
+			if (definition === null) return print("Unable to Find an Item for Bounty.");
 			player.inventory.GiveItem(global.ItemManager.CreateByItemID(Number(definition.itemid), Number(amount), false), player.inventory.containerMain);
 		} catch (e) {
 			print(e.message.toString());
@@ -393,30 +392,41 @@ var BountyBoard = {
 
 	runCheck: function() {
 		print("Running test");
-		this.checkForFriends("76561198049270726", "76561198035139464");
+		this.checkForFriends("76561198061032909", "76561198035139464");
 	},
 
 	checkForFriends: function(victimID, attackerID) {
 		//check for friends
-		GroupData = data.GetData("Groups");
+		try {
 		print("Inside checkForFriends with: ");
 		print(attackerID + " Attacker");
 		print(victimID + " Victim");
-		print(this.Config.Settings.antiFriends);
-		print("Do the players groups equal? " + GroupData.PlayerData[attackerID].Group === GroupData.PlayerData[victimID].Group);
+		print(this.Config.Settings.antiFriend);
+		print(friendsAPI);
+		print(clansOn);
+		print(clansOn.Call("HasFriend", attackerID, victimID));
 		if (this.Config.Settings.antiFriend) {
 		if (friendsAPI && friendsAPI.Call("HasFriend", attackerID, victimID)) {
 			print("Killer friends with victim");
 			return true;
-		} else if (GroupsAPI && GroupData.PlayerData[attackerID].Group === GroupData.PlayerData[victimID].Group) {
-			print("groups logic");
-			return true;
-		} else if (clansOn && clansOn.Call("HadFriend", attackerID, victimID)) {
+		} else if (clansOn && !clansOn.Call("HasFriend", attackerID, victimID)) {
 			print("Clans Logic");
+			attackerClan = clansOn.Call("FindClanByUser", attackerID);
+			victimClan = clansOn.Call("FindClanByUser", victimID);
+			print("attackerClan: " + attackerClan);
+			print("victimClan: " + victimClan);
+			if (attackerClan === victimClan) {
+				print("Found clans, matching");
 			return true;
+		} else {
+			return false;
+		}
 		}
 	}
 	return false;
+} catch(e) {
+	print(e.message.toString());
+}
 	},
 
 	OnEntityDeath: function(entity, hitinfo) {
@@ -448,9 +458,9 @@ var BountyBoard = {
 						plyrName: attacker.displayName,
 						btyAmt: BountyData.PlayerData[victimID].Bounty,
 						deadPlyr: victim.displayName
-					}
+					};
 					rust.BroadcastChat(this.prefix, this.msgs.btyClaim.replace(/plyrName|btyAmt|deadPlyr/g, function(matched) {
-						return rpObj[matched]
+						return rpObj[matched];
 					}), "0");
 					this.claimBounty(victimID, attackerID);
 
@@ -459,7 +469,7 @@ var BountyBoard = {
 				}
 			}
 		} catch (e) {
-			print(e.message.toString())
+			print(e.message.toString());
 		}
 	},
 
@@ -476,4 +486,4 @@ var BountyBoard = {
 			}
 		}
 	}
-}
+};
