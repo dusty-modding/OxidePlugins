@@ -177,7 +177,7 @@ var BountyBoard = {
 		AuctionData.OfflineHolding[user] = AuctionData.OfflineHolding[user];
 		AuctionData.OfflineHolding[user].itemName = AuctionData.OpenAuctions[auctionNum].itemName;
 		AuctionData.OfflineHolding[user].itemAmt = AuctionData.OpenAuctions[auctionNum].itemAmt;
-		AuctionData.OfflineHolding[user].auctionNum = AuctionData.OfflineHolding[auctionNum]
+		AuctionData.OfflineHolding[user].auctionNum = AuctionData.OfflineHolding[auctionNum];
 		this.saveData();
 	},
 //TODO: write offline function for owner or a method to tell the difference between a buyer and owner
