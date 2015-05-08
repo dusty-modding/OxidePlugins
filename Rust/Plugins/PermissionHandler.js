@@ -23,6 +23,7 @@ var PermissionHandler = {
   },
 
   OnServerInitialized: function() {
+    passed = false;
     this.msgs = this.Config.Messages;
     this.prefix = this.Config.Prefix;
     pluginList = plugins.GetAll();
@@ -86,7 +87,7 @@ var PermissionHandler = {
           Single API function
           -- Returns true or false passed on if perms check passed
    ------------------------------------------------------------------*/
-  checkPass: function() {
+  checkPass: function(passed) {
     return passed;
   },
 
@@ -172,14 +173,14 @@ var PermissionHandler = {
   hasPermission: function(player, perm) {
     var steamID = rust.UserIDFromPlayer(player);
     if (player.net.connection.authLevel === 2) {
-      return true;
+      return this.checkPass(true);
     }
 
     if (permission.UserHasPermission(steamID, perm)) {
-      return true;
+      return this.checkPass(true);
     }
     rust.SendChatMessage(player, prefix.PermissionHandler, msgs.noPermission, "0");
-    return false;
+    return this.checkPass(false);
   },
 
   registerPermissions: function() {
@@ -284,7 +285,7 @@ var PermissionHandler = {
     return false;
   },
 
-  OnPlayerChat: function(arg) {
+  /*OnPlayerChat: function(arg) {
     var msg = arg.GetString(0, "text");
     var player = arg.connection.player;
     if (msg.substring(1, 1) === "/") {
@@ -325,5 +326,5 @@ var PermissionHandler = {
 
     }
     return false;
-  }
+  }*/
 };
