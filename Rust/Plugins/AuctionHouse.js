@@ -1,4 +1,4 @@
-var BountyBoard = {
+var AuctionHouse = {
   Title: "Auction House",
   Author: "Killparadise",
   Version: V(1, 0, 0),
@@ -11,9 +11,8 @@ var BountyBoard = {
     this.msgs = this.Config.Messages;
     this.prefix = this.Config.Prefix;
     var phAPI = plugins.Find("PermissionHandler");
-    if (phAPI) callCheck = phAPI.Object.checkPassed();
+    if (phAPI) callCheck = phAPI.Object.checkPass();
     command.AddChatCommand("ah", this.Plugin, "cmdSwitch");
-    command.AddChatCommand("tester", this.Plugin, "runCheck");
   },
 
   LoadDefaultConfig: function() {
