@@ -20,6 +20,7 @@ var Alliances = {
     this.prefix = this.Config.Prefix;
     if (this.Config.Settings.useEconomy) EconAPI = plugins.Find("00-Economics");
     //if (this.Config.Settings.useShops) aShopsAPI = plugins.Find("AllianceShops"); //For future add ons
+    //if (this.Config.Settings.useDiplomacy) aDiploAPI = plugins.Find("AllianceDiplomacy"); //For future add ons
     command.AddChatCommand("ally", this.Plugin, "cmdSwitch");
   },
 
@@ -32,12 +33,15 @@ var Alliances = {
 
   LoadDefaultConfig: function() {
     this.Config.Settings = {
-      "cost": 1000,
+      "cost": 5000,
       "supply": "wood",
       "maxCharacters": 8,
       "useEconomy": true,
       "version": configVers,
-      "useRanksAndTitles": false
+      "useRanksAndTitles": false,
+      "inviteTimer": 60,
+      "nameChangeCost": 2500,
+      "tagChangeCost": 1000
     };
 
     this.Config.Permissions = {
@@ -46,9 +50,10 @@ var Alliances = {
       "kick": "canKick",
       "promote": "canPromote",
       "demote": "canDemote",
-      "updBoard": "canUpdateBoard",
-      "chgName": "canChangeName",
-      "chgTag": "canChangeTag",
+      "updboard": "canUpdateBoard",
+      "chgname": "canChangeName",
+      "chgtag": "canChangeTag",
+      "chgpolicy": "canChangePolicy",
       "mute": "canMute",
       "unmute": "canUnMute",
       "give": "canGivePerm",
@@ -65,7 +70,20 @@ var Alliances = {
       "deleteFail": "<color=red>Unable to Delete Alliance because {reason}.</color>",
       "deletePassed": "<color=lime>Successfully deleted the Alliance.</color>",
       "maxChars": "The Max character Limit is {charLimit} you cannot go above!",
-      "policy": "This Alliance does not have an Open Join Policy set."
+      "policy": "This Alliance does not have an Open Join Policy set.",
+      "policyChg": "<color=green>Policy Successfully changed to {policy}</color>",
+      "hasAlliance": "<color=red>That player already belongs to {alliance} and cannot be invited.</color>",
+      "invited": "Invited {player} to join your alliance.",
+      "wasInvited": "<color=lime>You've been invited to join {alliance} type /ally join to accept the invite!</color>",
+      "kick": "<color=lime>Successfully kicked {player}.</color>",
+      "kicked": "<color=red>You've been kicked from {alliance}!</color>",
+      "notFound": "Player not Found",
+      "kickSelf": "You can't kick youself! Use /ally leave",
+      "alreadyMuted": "This player is already muted.",
+      "muted": "<color=lime>Successfully muted {player}.</color>",
+      "unmuted": "<color=lime>Successfully unmuted {player}.</color>",
+      "notMuted": "This player is currently not muted.",
+      "youreMuted": "<color=red>You're currently muted in Alliance Chat!</color>"
     };
 
     this.Config.Prefix = "Alliances";
@@ -106,6 +124,7 @@ var Alliances = {
         }
       }
     }
+    return false;
   },
 
   findTag: function(steamID) {
@@ -118,6 +137,7 @@ var Alliances = {
         }
       }
     }
+    return false;
   },
 
   //----------------------------------------
@@ -226,38 +246,82 @@ var Alliances = {
   },
 
   //----------------------------------------
-  //          Command Catcher
+  //          Main Functions
   //----------------------------------------
-  cmdSwitch: function(player, cmd, args) {
-    try {
-      var steamID = rust.UserIDFromPlayer(player);
-      var perms = this.Config.Permissions;
-      print(perms.create);
-      switch (args[0]) {
-        case "create":
-          if (this.hasPermission(player, perms.create)) {
-            this.createAlliance(player, args);
-          }
-          break;
-        case "delete":
-          if (this.hasPermission(player, perms.delete)) {
-            this.deleteAlliance(player, args);
-          }
-          break;
-        default:
-          break;
-      }
-    } catch (e) {
-      print(e.message.toString());
-    }
-  },
-
   setTag: function(player) {
     var steamID = rust.UserIDFromPlayer(player);
     var alliance = this.findAlliance(player) || null;
     if (alliance === null || alliance === undefined) return false;
     if (AllianceData.PlayerData[steamID].originalName === "" || AllianceData.PlayerData[steamID].originalName === undefined) AllianceData.PlayerData[steamID].originalName = player.displayName;
     player.displayName = "[" + AllianceData.Alliances[alliance].tag + "]" + player.displayName;
+  },
+
+
+  //----------------------------------------
+  //          Command Catcher
+  //----------------------------------------
+  cmdSwitch: function(player, cmd, args) {
+    try {
+      var steamID = rust.UserIDFromPlayer(player);
+      var perms = this.Config.Permissions;
+      var allowed = this.hasPermission(player, perms.args[0]);
+      switch (args[0]) {
+        case "create":
+          this.createAlliance(player, args);
+          break;
+        case "delete":
+          if (allowed) this.deleteAlliance(player, args);
+          break;
+        case "chgpolicy":
+          if (allowed) this.changePolicy(player, args);
+          break;
+        case "invite":
+          if (allowed) this.invitePlayer(player, args);
+          break;
+        case "join":
+          this.playerJoin(player, args);
+          break;
+        case "leave":
+          this.playerLeave(player, args);
+          break;
+        case "kick":
+          if (allowed) this.kickPlayer(player, args);
+          break;
+          //These commands down need functions written as they do not exist yet.
+        case "mute":
+          if (allowed) this.mutePlayer(player, args);
+          break;
+        case "unmute":
+          if (allowed) this.unmutePlayer(player, args);
+          break;
+        case "chgtag":
+          if (allowed) this.changeTag(player, args);
+          break;
+        case "chgname":
+          if (allowed) this.changeName(player, args);
+          break;
+        case "updboard":
+          if (allowed) this.updateBoard(player, args);
+          break;
+        case "promote":
+          if (allowed) this.promotePlayer(player, args);
+          break;
+        case "demote":
+          if (allowed) this.demotePlayer(player, args);
+          break;
+        case "give":
+          if (allowed) this.givePerm(player, args);
+          break;
+        case "remove":
+          if (allowed) this.removePerm(player, args);
+          break;
+        default:
+          print("hit default, something will go here eventually...");
+          break;
+      }
+    } catch (e) {
+      print(e.message.toString());
+    }
   },
 
   //----------------------------------------
@@ -284,17 +348,11 @@ var Alliances = {
       AllianceData.Alliances[args[1]] = AllianceData.Alliances[args[1]] || {};
       AllianceData.Alliances[args[1]].power = 0;
       AllianceData.Alliances[args[1]].board = "";
-      AllianceData.Alliances[args[1]].policy = "closed";
-      AllianceData.Alliances[args[1]].invited = [];
+      AllianceData.Alliances[args[1]].policy = "Closed";
       AllianceData.Alliances[args[1]].owner = steamID.toString();
       AllianceData.Alliances[args[1]].tag = args[2].toString();
       AllianceData.Alliances[args[1]].Ranks = this.Config.Ranks;
       AllianceData.Alliances[args[1]].members = [];
-      AllianceData.Alliances[args[1]].Rank1 = [];
-      AllianceData.Alliances[args[1]].Rank2 = [];
-      AllianceData.Alliances[args[1]].Rank3 = [];
-      AllianceData.Alliances[args[1]].Rank4 = [];
-      AllianceData.Alliances[args[1]].Rank5 = AllianceData.Alliances[args[1]].owner;
       player.ChatMessage(this.buildString(this.msgs.created, [args[1].toString()]));
     } else {
       player.ChatMessage(this.buildString(this.msgs.createFail, ["Alliance already exists"]));
@@ -305,12 +363,6 @@ var Alliances = {
 
   deleteAlliance: function(player, args) {
     var steamID = rust.UserIDFromPlayer(player);
-
-    if (!player.isMember(steamID)) {
-      player.ChatMessage(this.buildString(this.msgs.deleteFail, ["You don't belong to this alliance"]));
-      return false;
-    }
-
     if (steamID !== AllianceData.Alliances[args[1]].owner) {
       player.ChatMessage(this.buildString(this.msgs.deleteFail, ["You're not the owner"]));
       return false;
@@ -325,54 +377,173 @@ var Alliances = {
   },
 
   changePolicy: function(player, args) {
-
-  },
-
-  invitePlayer: function(player, args) {
-
-  },
-
-  playerLeave: function(player, args) {
-    var steamID = rust.UserIDFromPlayer(player);
     var alliance = this.findAlliance(player);
-    if (AllianceData.Alliances[alliance].owner !== steamID) {
-      for (var x in AllianceData.Alliances[alliance]) {
-        var index = AllianceData.Alliances[alliance][x].indexOf(steamID);
-        if (AllianceData.Alliances[alliance][x].indexOf(steamID) > -1) {
-          AllianceData.Alliances[alliance][x].splice(index, 1);
-        }
-      }
-      player.displayName = AllianceData.PlayerData[steamID].originalName;
+    if (AllianceData.Alliances[alliance].policy === "Open") {
+      AllianceData.Alliances[alliance].policy = "Closed";
+      player.ChatMessage(this.msgs.policyChg.replace("{policy}", "Closed"));
     } else {
-      for (var i = 0; i < AllianceData.Alliances[alliance].members.length; i++) {
-        var member = this.findPlayerByName(AllianceData.Alliances[alliance].members[i]);
-        member[0].displayName = AllianceData.PlayerData[member[1]].originalName;
-      }
-      delete AllianceData.Alliances[alliance];
+      AllianceData.Alliances[alliance].policy = "Open";
+      player.ChatMessage(this.msgs.policyChg.replace("{policy}", "Open"));
     }
     this.saveData();
   },
 
+  //----------------------------------------
+  //        Player Based Commands
+  //----------------------------------------
+  invitePlayer: function(player, args) {
+    var steamID = rust.UserIDFromPlayer(player);
+    var alliance = this.findAlliance(player);
+    var target = this.findPlayerByName(args[1].toString());
+    var hasAlliance = this.findAlliance(target[0]);
+
+    if (hasAlliance) {
+      player.ChatMessage(this.msgs.hasAlliance.replace("{alliance}", alliance));
+      return false;
+    } else {
+      player.ChatMessage(this.msgs.invited.replace("{player}", target[0].displayName));
+      target[0].ChatMessage(this.msgs.wasInvited.replace("{alliance}", target[0].displayName));
+      AllianceData.PlayerData[steamID].invitedTo = alliance;
+      timer.Once(this.Config.Settings.inviteTimer, function() {
+        AllianceData.PlayerData[steamID].invitedTo = "";
+        timer.Destroy();
+      });
+    }
+
+  },
+
+  playerLeave: function(player, args) {
+    var steamID = rust.UserIDFromPlayer(player),
+      i, ii, len, rank;
+    var alliance = this.findAlliance(pWlayer);
+    if (AllianceData.Alliances[alliance].owner !== steamID.toString()) {
+      for (i = 0, len = AllianceData.Alliances[alliance].members.length; i < len; i++) {
+        if (len[i] === steamID.toString()) {
+          AllianceData.Alliances[alliance].members.splice(len[i], 1);
+          rank = permission.GetUserGroups(steamID);
+          for (ii = 0, len = rank.length; ii < len; ii++) {
+            if (AllianceData.Alliances[alliance].Ranks.indexOf(len[ii]) > -1) {
+              permission.RemoveUserGroup(steamID, len[ii]);
+            }
+          }
+          break;
+        }
+      }
+
+    } else {
+      for (i = 0; i < AllianceData.Alliances[alliance].members.length; i++) {
+        var member = this.findPlayerByName(AllianceData.Alliances[alliance].members[i]);
+        member[0].displayName = AllianceData.PlayerData[member[1]].originalName;
+        rank = permission.GetUserGroups(member[1]);
+        for (ii = 0, len = rank.length; ii < len; ii++) {
+          if (AllianceData.Alliances[alliance].Ranks.indexOf(len[ii]) > -1) {
+            permission.RemoveUserGroup(member[1], len[ii]);
+          }
+        }
+      }
+      delete AllianceData.Alliances[alliance];
+    }
+
+    this.saveData();
+    player.displayName = AllianceData.PlayerData[steamID].originalName;
+  },
+
   playerJoin: function(player, args) {
     var steamID = rust.UserIDFromPlayer(player);
-    if (args[0].length === 3 || args[0].length === 8) {
-      for (var x in AllianceData.Alliances) {
-        if (args[0] === AllianceData.Alliances[x].tag && AllianceData.Alliances[x].policy === "open") {
 
-        } else if (args[0] === AllianceData.Alliances[x].tag && AllianceData.Alliances[x].policy === "closed") {
+    if (args.length === 1 && AllianceData.PlayerData[steamID].invitedTo !== "") {
+      AllianceData.Alliances[AllianceData.PlayerData[steamID].invitedTo].members.push(steamID);
+    }
+
+    if (args[1].length === 3 || args[1].length === 8) {
+      for (var x in AllianceData.Alliances) {
+        if (args[1] === AllianceData.Alliances[x].tag && AllianceData.Alliances[x].policy === "open") {
+          AllianceData.Alliances[AllianceData.PlayerData[steamID].invitedTo].members.push(steamID);
+          permission.AddUserGroup(steamID, AllianceData.Alliances[x].Ranks[0]);
+        } else if (args[1] === AllianceData.Alliances[x].tag && AllianceData.Alliances[x].policy === "closed") {
           player.ChatMessage(this.msgs.policy);
+          return false;
         }
       }
     }
+    this.saveData();
+  },
+
+  kickPlayer: function(player, args) {
+
+    var steamID = rust.UserIDFromPlayer(player);
+    var alliance = this.findAlliance(player);
+    var target = this.findPlayerByName(args[1].toString());
+
+    if (player.displayName === target[0].displayName) {
+      player.chatMessage(this.msgs.kickSelf);
+      return false;
+    }
+
+    if (alliance === this.findAlliance(target[0])) {
+      this.playerLeave(target[0]);
+      player.ChatMessage(this.msgs.kick.replace("{player}", target[0].displayName));
+      target[0].ChatMessage(this.msgs.kicked.replace("{alliance}", alliance));
+    } else {
+      player.ChatMessage(this.msgs.notFound);
+    }
+    return false;
+  },
+
+  mutePlayer: function(player, args) {
+    var target = this.findPlayerByName(args[1].toString());
+    AllianceData.PlayerData[target[1]].isMuted = AllianceData.PlayerData[target[1]].isMuted || false;
+    if (AllianceData.PlayerData[target[1]].isMuted) {
+      player.ChatMessage(this.msgs.alreadyMuted);
+      return false;
+    } else {
+      AllianceData.PlayerData[target[1]].isMuted = true;
+      player.ChatMessage(this.msgs.muted.replace("{player}", target[0].displayName));
+    }
+  },
+
+  unmutePlayer: function(player, args) {
+    var target = this.findPlayerByName(args[1].toString());
+    if (AllianceData.PlayerData[target[1]].isMuted) {
+      player.ChatMessage(this.msgs.unmuted.replace("{player}", target[0].displayName));
+      AllianceData.PlayerData[target[1]].isMuted = false;
+    } else {
+      player.ChatMessage(this.msgs.notMuted);
+      return false;
+    }
+  },
+
+  promotePlayer: function(player, args) {
+
+  },
+
+  demotePlayer: function(player, args) {
+
   },
 
   //----------------------------------------
   //          Position Checks
   //----------------------------------------
-
   getRank: function(player) {
     var steamID = rust.UserIDFromPlayer(player);
   },
 
+  OnPlayerChat: function(args) {
+    var msg = arg.GetString(0, "text");
+    var player = arg.connection.player,
+      steamID = rust.UserIDFromPlayer(player);
+    if (msg.substring(1, 1) === "/ac") {
+      this.allianceChat(player, steamID, msg);
+      return false;
+    }
+  },
 
+  allianceChat: function(player, steamID, msg) {
+    if (AllianceData.PlayerData[steamID].isMuted) {
+      player.ChatMessage(this.msgs.youreMuted);
+      return false;
+    } else {
+      //Function to send alliance only chat.
+    }
+  }
 };
