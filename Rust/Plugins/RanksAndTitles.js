@@ -653,10 +653,9 @@ var RanksAndTitles = {
     for (i; i < j; i++) {
       if (this.Config.main[i].title === TitlesData.PlayerData[victimID].Title) {
         return this.Config.main[i].karmaModifier;
-      } else {
-        return 1;
       }
     }
+    return 1;
   },
 
   /*-----------------------------------------------------------------
