@@ -59,10 +59,22 @@ var Alliances = {
       "unmute": "canUnMute",
       "give": "canGivePerm",
       "remove": "canRemovePerm",
-      "delete": "canDelete"
+      "delete": "canDelete",
+      "transfer": "canTransfer",
+      "staff": "isStaff"
     };
 
     this.Config.Ranks = ["Rank I", "Rank II", "Rank III", "Rank IV", "Rank V"];
+
+    this.Config.RanksPerms = {
+      "Rank I": [],
+      "Rank II": ["canInvite"],
+      "Rank III": ["canInvite", "canPromote", "canDemote"],
+      "Rank IV": ["canInvite", "canPromote", "canDemote", "canMute", "canUnMute", "canKick", "canChangePolicy", "canUpdateBoard"],
+      "Rank V": ["canInvite", "canPromote", "canDemote", "canMute", "canUnMute", "canKick", "canChangePolicy", "canUpdateBoard", "canChangeTag", "canChangeName",
+        "canTransfer"
+      ]
+    };
 
     this.Config.Messages = {
       "noPermission": "<color=red>You do not have permission to use this command</color>",
@@ -85,10 +97,60 @@ var Alliances = {
       "unmuted": "<color=lime>Successfully unmuted {player}.</color>",
       "notMuted": "This player is currently not muted.",
       "youreMuted": "<color=red>You're currently muted in Alliance Chat!</color>",
-      "noAlliance": "You're not a part of an alliance"
+      "noAlliance": "You're not a part of an alliance",
+      "promoted": "Successfully promoted {player}, to {rank}",
+      "beenPromoted": "You've been promoted too {rank}",
+      "demoted": "Successfully demoted {player}, to {rank}",
+      "beenDemoted": "You've been demoted too {rank}",
+      "tooLong": "The entered name is longer than the {limit} character limit.",
+      "badCmd": "Incorrect Command structure. Please do: {cmd}",
+      "cantPromote": "You cannot promote someone to the same rank as you.",
+      "cantDemote": "You cannot demote someone of the same rank as you.",
+      "defaultMsg": "<size=18>Alliances</size>\n {details}",
+      "wipe": "Successfully Wiped Alliances Data.",
+      "difAlliance": "The target player is not in your alliance.",
+      "tranSucc": "Successfully transfered alliance to {player}",
+      "switch": "<color=lime>The alliance leader has transfered ownership too {player}.</color>"
     };
 
     this.Config.Prefix = "Alliances";
+
+    this.Config.Help = {
+      "default": [
+        "/ally - default command gives basic alliance info or plugin info",
+        "/ally create name tag - creates an alliance",
+        "/ally help - show these messages"
+      ],
+      "Admin": [
+        "/ally delete alliance - deletes the given alliance",
+        "/ally wipe - wipes the entire alliances data file"
+      ],
+      "Rank1": [],
+      "Rank2": [
+        "<size=14>Rank 2</size>",
+        "/ally invite player - invite desired player to alliance"
+      ],
+      "Rank3": [
+        "<size=14>Rank 3</size>",
+        "/ally promote player - promote the desired player",
+        "/ally demote player - demote the desired player"
+      ],
+      "Rank4": [
+        "<size=14>Rank 4</size>",
+        "/ally updboard 'message' - updates the alliance board with a new message",
+        "/ally chgpolicy - toggles the alliance join policy between open & closed",
+        "/ally kick player - kicks desired player from the alliance",
+        "/ally mute player - mutes the desired player from alliance chat",
+        "/ally unmute player - unmutes the desired player in alliance chat"
+      ],
+      "Rank5": [
+        "<size=14>Rank 5</size>",
+        "<color=red>If you LEAVE, your entire alliance will be deleted.</color>",
+        "/ally transfer playername - transfer ownership of alliance to desired player",
+        "/ally chgtag tag - changes the tag of your alliance",
+        "/ally chgname name - changes the name of your alliance"
+      ]
+    };
   },
 
   //----------------------------------------
@@ -220,17 +282,14 @@ var Alliances = {
   },
 
   registerPermissions: function() {
-    var i = 0,
-      ii = 0,
-      p = this.Config.Permissions.length,
-      j = this.Config.Ranks.length;
-    //prefix permissions
-    for (i; i < j; i++) {
-      if (!permission.GroupExists(this.Config.Ranks[i])) {
-        permission.CreateGroup(this.Config.Ranks[i], this.Config.Ranks[i], i);
-        print("Built Rank Groups");
+    //Ranks Groups creation
+    for (var key in this.Config.Ranks) {
+      if (!permission.GroupExists(key)) {
+        print("Built Rank Groups: " + key);
+        permission.CreateGroup(key, key, i++);
       }
     }
+
     //single permissions
     for (var perm in this.Config.Permissions) {
       if (!permission.PermissionExists(this.Config.Permissions[perm])) {
@@ -239,12 +298,22 @@ var Alliances = {
     }
   },
 
-  setOwnerPerms: function(player) {
-
-  },
-
+  //Set permissions for group types
+  /*"Rank I": [],
+  "Rank II": ["canInvite"],
+  "Rank III": ["canInvite", "canPromote", "canDemote"],
+  "Rank IV": ["canInvite", "canPromote", "canDemote", "canMute", "canUnMute", "canKick", "canChangePolicy", "canUpdateBoard"],
+  "Rank V": ["canInvite", "canPromote", "canDemote", "canMute", "canUnMute", "canKick", "canChangePolicy", "canUpdateBoard", "canChangeTag", "canChangeName",
+    "canTransfer"
+  ]*/
   setRankPerms: function() {
-
+    for (var key in this.Config.RanksPerms) {
+      for (var i = 0; i < this.Config.RanksPerms[key].length; i++) {
+        if (!permission.GroupHasPermission(key, this.Config.RanksPerms[key][i])) {
+          permission.GrantGroupPermission(key, this.Config.RanksPerms[key][i], this.Plugin);
+        }
+      }
+    }
   },
 
   //----------------------------------------
@@ -266,6 +335,7 @@ var Alliances = {
     try {
       var steamID = rust.UserIDFromPlayer(player);
       var perms = this.Config.Permissions;
+
       var allowed = this.hasPermission(player, perms.args[0]);
       switch (args[0]) {
         case "create":
@@ -289,12 +359,17 @@ var Alliances = {
         case "kick":
           if (allowed) this.kickPlayer(player, args);
           break;
-          //These commands down need functions written as they do not exist yet.
         case "mute":
           if (allowed) this.mutePlayer(player, args);
           break;
         case "unmute":
           if (allowed) this.unmutePlayer(player, args);
+          break;
+        case "promote":
+          if (allowed) this.promotePlayer(player, args);
+          break;
+        case "demote":
+          if (allowed) this.demotePlayer(player, args);
           break;
         case "chgtag":
           if (allowed) this.changeTag(player, args);
@@ -305,12 +380,16 @@ var Alliances = {
         case "updboard":
           if (allowed) this.updateBoard(player, args);
           break;
-        case "promote":
-          if (allowed) this.promotePlayer(player, args);
+        case "help":
+          this.allyHelp(player, perms);
           break;
-        case "demote":
-          if (allowed) this.demotePlayer(player, args);
+        case "wipe":
+          if (allowed) this.wipeData(player, args);
           break;
+        case "transfer":
+          if (allowed) this.transferAlliance(player, args);
+          break;
+          //These commands down need functions written as they do not exist yet.
         case "give":
           if (allowed) this.givePerm(player, args);
           break;
@@ -318,7 +397,14 @@ var Alliances = {
           if (allowed) this.removePerm(player, args);
           break;
         default:
-          print("hit default, something will go here eventually...");
+          var alliance = this.findAlliance(player);
+          if (alliance !== null) {
+            player.ChatMessage(this.msgs.defaultMsg.replace("{details}", "Name: " + AllianceData.Alliances[alliance] + "\nTag: " +
+              AllianceData.Alliances[alliance].policy + tag + "\nPolicy: " + AllianceData.Alliances[alliance].policy + "\nNumber of Members: " +
+              AllianceData.Alliances[alliance].members.length));
+          } else {
+            player.ChatMessage(this.msgs.defaultMsg.replace("{details}", "No Alliance found\nuse /ally create or /ally join to join an alliance\nor /ally help for help."));
+          }
           break;
       }
     } catch (e) {
@@ -326,10 +412,38 @@ var Alliances = {
     }
   },
 
+  allyHelp: function(player, perms) {
+    var alliance = this.findAlliance(player);
+    for (var key in this.Config.Help) {
+      for (var i = 0; i < this.Config.Help[key].length; i++) {
+        if (alliance === null && key === "default") {
+          player.ChatMessage(this.Config.Help[key][i]);
+          if (this.hasPermission(player, this.Config.Permissions.staff && key === "Admin")) {
+            player.ChatMessage(this.Config.Help[key][i]);
+          }
+        } else {
+          player.ChatMessage(this.Config.Help[key][i]);
+          if (this.hasPermission(player, this.Config.Permissions.staff && key === "Admin")) {
+            player.ChatMessage(this.Config.Help[key][i]);
+          }
+        }
+      }
+    }
+  },
+
+  wipeData: function(player, args) {
+    delete AllianceData.Alliances;
+    delete AllianceData.PlayerData;
+    AllianceData = {};
+    AllianceData.Alliances = {};
+    AllianceData.PlayerData = {};
+    this.saveData();
+    player.chatMessage(this.msgs.wipe);
+  },
+
   //----------------------------------------
   //          Command Handling
   //----------------------------------------
-  // /ally create alliancename tag
   createAlliance: function(player, args) {
     if (args.length !== 3) {
       player.ChatMessage(this.buildString(this.msgs.createFail, ["there's not enough arguments"]));
@@ -378,6 +492,21 @@ var Alliances = {
     }
   },
 
+  transferAlliance: function(player, args) {
+    var getPlayer = this.findPlayerByName(args[1]);
+    var alliance = this.findAlliance(player);
+    var targetAlliance = this.findAlliance(getPlayer[0]);
+    if (alliance !== targetAlliance) {
+      player.ChatMessage(this.msgs.difAlliance);
+      return false;
+    } else {
+      AllianceData.Alliances[alliance].owner = getPlayer[1];
+      player.ChatMessage(this.msgs.tranSucc.replace("{player}", getPlayer[0].displayName));
+      alliance.Broadcast(this.msgs.switch.replace("{player}", getPlayer[0].displayName));
+      this.saveData();
+    }
+  },
+
   changePolicy: function(player, args) {
     var alliance = this.findAlliance(player);
     if (AllianceData.Alliances[alliance].policy === "Open") {
@@ -388,6 +517,41 @@ var Alliances = {
       player.ChatMessage(this.msgs.policyChg.replace("{policy}", "Open"));
     }
     this.saveData();
+  },
+
+  changeTag: function(player, args) {
+    var newTag = args[1].toString();
+    var alliance = this.findAlliance(player);
+    if (alliance === null) player.ChatMessage(this.msgs.noAlliance);
+    AllianceData.Allinaces[alliance].tag = newTag;
+    this.saveData();
+    for (var i = 0; i < Alliancedata.Alliances[alliance].members.length; i++) {
+      var member = this.findPlayerByName(Alliancedata.Alliances[alliance].members[i]);
+      this.setTag(member[0]);
+    }
+  },
+
+  changeName: function(player, args) {
+    var newName = args[1].toString();
+    var alliance = this.findAlliance(player);
+    if (alliance === null) player.ChatMessage(this.msgs.noAlliance);
+    if (newName > this.Config.Settings.maxCharacters) {
+      player.ChatMessage(this.msgs.tooLong);
+      return false;
+    }
+    AllianceData.Alliances[newName] = AllianceData.Alliances[alliance];
+    delete AllianceData.Alliances[alliance];
+    this.saveData();
+  },
+
+  updateBoard: function(player, args) {
+    if (args[1] === "") {
+      player.ChatMessage(this.msgs.badCmd.replace("{cmd}", "/ally updboard 'message'"));
+      return false;
+    }
+    var alliance = this.findAlliance(player);
+    if (alliance === null) player.ChatMessage(this.msgs.noAlliance);
+    AllianceData.Alliances[alliance].board = args[1].toString();
   },
 
   //----------------------------------------
@@ -417,7 +581,7 @@ var Alliances = {
   playerLeave: function(player, args) {
     var steamID = rust.UserIDFromPlayer(player),
       i, ii, len, rank;
-    var alliance = this.findAlliance(pWlayer);
+    var alliance = this.findAlliance(player);
     if (AllianceData.Alliances[alliance].owner !== steamID.toString()) {
       for (i = 0, len = AllianceData.Alliances[alliance].members.length; i < len; i++) {
         if (len[i] === steamID.toString()) {
@@ -516,11 +680,61 @@ var Alliances = {
   },
 
   promotePlayer: function(player, args) {
-    
+    var getPlayer = this.findPlayerByName(args[1]);
+    var newRank = null;
+    var rank = this.getRank(getPlayer[0]);
+    var playerRank = this.getRank(player);
+    var nextRank = this.Config.Ranks.indexOf(rank);
+    nextRank = nextRank + 1;
+    if (playerRank === nextRank || playerRank === args[2].toString()) {
+      player.ChatMessage(this.msgs.cantPromote);
+      return false;
+    }
+    if (args.length === 2) {
+      newRank = this.Config.Ranks[nextRank];
+      permission.RemoveUserGroup(getPlayer[1], rank);
+      permission.AddUserGroup(getPlayer[1], newRank);
+      player.ChatMessage(this.buildString(this.msgs.promoted, [getPlayer[0].displayName, newRank]));
+      getPlayer[0].ChatMessage(this.msgs.beenPromoted.replace("{rank}", newRank));
+    } else if (args.length === 3) {
+      newRank = this.Config.Ranks[args[2].toString()];
+      permission.RemoveUserGroup(getPlayer[1], rank);
+      permission.AddUserGroup(getPlayer[1], newRank);
+      player.ChatMessage(this.buildString(this.msgs.promoted, [getPlayer[0].displayName, newRank]));
+      getPlayer[0].ChatMessage(this.msgs.beenPromoted.replace("{rank}", newRank));
+    } else {
+      player.chatMessage(this.msgs.notFound);
+      return false;
+    }
   },
 
   demotePlayer: function(player, args) {
-
+    var getPlayer = this.findPlayerByName(args[1]);
+    var newRank = null;
+    var rank = this.getRank(getPlayer[0]);
+    var playerRank = this.getRank(player);
+    var nextRank = this.Config.Ranks.indexOf(rank);
+    nextRank = nextRank - 1;
+    if (playerRank === rank || playerRank === args[2].toString()) {
+      player.ChatMessage(this.msgs.cantDemote);
+      return false;
+    }
+    if (args.length === 2) {
+      newRank = this.Config.Ranks[nextRank];
+      permission.RemoveUserGroup(getPlayer[1], rank);
+      permission.AddUserGroup(getPlayer[1], newRank);
+      player.ChatMessage(this.buildString(this.msgs.demoted, [getPlayer[0].displayName, newRank]));
+      getPlayer[0].ChatMessage(this.msgs.beenDemoted.replace("{rank}", newRank));
+    } else if (args.length === 3) {
+      newRank = this.Config.Ranks[args[2].toString()];
+      permission.RemoveUserGroup(getPlayer[1], rank);
+      permission.AddUserGroup(getPlayer[1], newRank);
+      player.ChatMessage(this.buildString(this.msgs.demoted, [getPlayer[0].displayName, newRank]));
+      getPlayer[0].ChatMessage(this.msgs.beenDemoted.replace("{rank}", newRank));
+    } else {
+      player.chatMessage(this.msgs.notFound);
+      return false;
+    }
   },
 
   hideTag: function(name, alliance) {
@@ -535,15 +749,25 @@ var Alliances = {
   //----------------------------------------
   getRank: function(player) {
     var steamID = rust.UserIDFromPlayer(player);
+    var userGroups = permission.GetUserGroups(steamID);
+    for (var i = 0; i < this.Config.Ranks.length; i++) {
+      for (var ii = 0; ii < userGroups.length; ii++) {
+        if (this.Config.Ranks[i] === userGroups[ii]) {
+          var rank = this.Config.Ranks[i];
+          return rank;
+        }
+      }
+    }
+    return null;
   },
 
-  allianceChat: function(player, cmd, args) {
+  allianceChat: function(player, args) {
     var alliance = this.findAlliance(player);
     var steamID = rust.UserIDFromPlayer(player);
     var msg = string.Join(" ", args);
 
     if (msg === null || msg === "") {
-        return;
+      return;
     }
 
     if (AllianceData.PlayerData[steamID].isMuted) {
