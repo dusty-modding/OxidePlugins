@@ -730,7 +730,9 @@ var RanksAndTitles = {
       rust.SendChatMessage(player, prefix.ranks, msgs.setKarma, "0");
     } else {
       rust.SendChatMessage(player, prefix.ranks, msgs.setKarma0, "0");
+      return false;
     }
+    this.checkPlayerData(getPlayer[0], getPlayer[1]);
   },
 
   checkKarma: function(player, cmd, args) {
@@ -750,6 +752,7 @@ var RanksAndTitles = {
       this.saveData();
       rust.SendChatMessage(player, prefix.ranks, msgs.addKarma, "0");
     }
+    this.checkPlayerData(getPlayer[0], getPlayer[1]);
   },
 
   removeKarma: function(player, cmd, args) {
@@ -760,6 +763,7 @@ var RanksAndTitles = {
       this.saveData();
       rust.SendChatMessage(player, prefix.ranks, msgs.removeKarma, "0");
     }
+    this.checkPlayerData(getPlayer[0], getPlayer[1]);
   },
 
   //this function is caused by our death checker, this sends data to our data file to keep track of a KDR for the
