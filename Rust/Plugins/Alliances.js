@@ -22,6 +22,7 @@ var Alliances = {
     //if (this.Config.Settings.useShops) aShopsAPI = plugins.Find("AllianceShops"); //For future add ons
     //if (this.Config.Settings.useDiplomacy) aDiploAPI = plugins.Find("AllianceDiplomacy"); //For future add ons
     command.AddChatCommand("ally", this.Plugin, "cmdSwitch");
+    command.AddChatCommand("ac", this.Plugin, "allianceChat");
   },
 
   runUpdate: function() {
@@ -83,7 +84,8 @@ var Alliances = {
       "muted": "<color=lime>Successfully muted {player}.</color>",
       "unmuted": "<color=lime>Successfully unmuted {player}.</color>",
       "notMuted": "This player is currently not muted.",
-      "youreMuted": "<color=red>You're currently muted in Alliance Chat!</color>"
+      "youreMuted": "<color=red>You're currently muted in Alliance Chat!</color>",
+      "noAlliance": "You're not a part of an alliance"
     };
 
     this.Config.Prefix = "Alliances";
@@ -514,11 +516,18 @@ var Alliances = {
   },
 
   promotePlayer: function(player, args) {
-
+    
   },
 
   demotePlayer: function(player, args) {
 
+  },
+
+  hideTag: function(name, alliance) {
+    if (alliance === null) return name;
+    var tag = name.match(/@"\[" + alliance + @"\]\s"/g);
+    name = name.replace(tag, "");
+    return name;
   },
 
   //----------------------------------------
@@ -528,22 +537,23 @@ var Alliances = {
     var steamID = rust.UserIDFromPlayer(player);
   },
 
-  OnPlayerChat: function(args) {
-    var msg = arg.GetString(0, "text");
-    var player = arg.connection.player,
-      steamID = rust.UserIDFromPlayer(player);
-    if (msg.substring(1, 1) === "/ac") {
-      this.allianceChat(player, steamID, msg);
-      return false;
-    }
-  },
+  allianceChat: function(player, cmd, args) {
+    var alliance = this.findAlliance(player);
+    var steamID = rust.UserIDFromPlayer(player);
+    var msg = string.Join(" ", args);
 
-  allianceChat: function(player, steamID, msg) {
+    if (msg === null || msg === "") {
+        return;
+    }
+
     if (AllianceData.PlayerData[steamID].isMuted) {
       player.ChatMessage(this.msgs.youreMuted);
       return false;
+    } else if (alliance === undefined || alliance === null || alliance === "") {
+      player.ChatMessage(this.msgs.noAlliance);
+      return false;
     } else {
-      //Function to send alliance only chat.
+      alliance.Broadcast(hideTag(player.displayName, alliance) + ": " + msg);
     }
   }
 };
