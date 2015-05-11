@@ -1,7 +1,7 @@
 var RanksAndTitles = {
   Title: "RanksAndTitles",
   Author: "Killparadise",
-  Version: V(1, 5, 4),
+  Version: V(1, 5, 5),
   ResourceId: 830,
   Url: "http://oxidemod.org/resources/ranks-and-titles.830/",
   Init: function() {
@@ -15,41 +15,26 @@ var RanksAndTitles = {
   OnServerInitialized: function() {
     msgs = this.Config.Messages;
     prefix = this.Config.Prefix;
-    chatHandler = plugins.Find('chathandler');
-    if (chatHandler) {
-      chatHandler = true;
-    } else {
-      chatHandler = false;
-    }
+    chatHandler = plugins.Find('chathandler') ? true : false;
   },
 
   //This function is manually updated by me to apply new changes to the config file,
   //This will automatically push new updates into the config for the user
   updateConfig: function(player, cmd, args) {
     var count = 0;
-    this.LoadDefaultConfig();
 
-    if (this.Config.Version !== "1.6.2") {
-      print("Updating Config to v1.6.2");
-      this.Config.Version = "1.6.2";
-      this.Config.Persmissions = {
-        "wipe": "canWipe",
-        "set": "canSet",
-        "remove": "canRemove",
-        "hide": "canHide",
-        "switch": "canSwitch",
-        "kset": "canSetKarma",
-        "kcheck": "canCheckKarma",
-        "krem": "canRemKarma",
-        "kadd": "canAddKarma",
-        "clear": "canClear",
-        "hideself": "canHideSelf",
-        "create": "canCreate",
-        "delete": "canDelete",
-        "staff": "isStaff",
-      };
-      print("Fixed Permissions...");
-      print("Config Successfully Updated to v1.6.2");
+    if (this.Config === undefined || this.Config.Version === undefined || this.Config.Settings.deBugOff === undefined) {
+      this.LoadDefaultConfig();
+    }
+
+    if (this.Config.Version !== "1.6.3") {
+      print("Updating Config to v1.6.3");
+      this.Config.Version = "1.6.3";
+      delete this.Config.Settings.deBugOff;
+      print("Removed deBugOff...");
+      this.Config.Settings.chatColor = "#FFFFFF";
+      print("Added chat color...");
+      print("Config Successfully Updated to v1.6.3");
     } else {
       print("Config already at latest version: v" + this.Config.Version);
       return false;
@@ -59,9 +44,8 @@ var RanksAndTitles = {
 
   LoadDefaultConfig: function() {
     this.Config.authLevel = 2;
-    this.Config.Version = "1.6.2";
+    this.Config.Version = "1.6.3";
     this.Config.Settings = this.Config.Settings || {
-      "deBugOff": true,
       "karma": true,
       "colorSupport": true,
       "noAdmin": false,
@@ -70,7 +54,8 @@ var RanksAndTitles = {
       "useRanksPerms": false,
       "usePunishSystem": true,
       "chatNameColor": "#1bd228",
-      "staffchatNameColor": "#1bd228"
+      "staffchatNameColor": "#1bd228",
+      "chatColor": "#FFFFFF"
     };
     this.Config.Punishment = this.Config.Punishment || [{
       "rank": 0,
@@ -88,16 +73,6 @@ var RanksAndTitles = {
       "title": "Donor",
       "Color": "#ffa500ff",
       "permission": "donor",
-      "default": false
-    }, {
-      "title": "Mod",
-      "Color": "#add8e6ff",
-      "permission": "mod",
-      "default": false
-    }, {
-      "title": "Admin",
-      "Color": "#800000ff",
-      "permission": "admin",
       "default": false
     }, {
       "title": "Owner",
@@ -223,7 +198,6 @@ var RanksAndTitles = {
       "/rt create rankname rank karmaneeded killsneeded karmagiven color permissions - create a new rank",
       "/rt create prefixname color permission",
       "/rt delete rankname - delete a rank",
-      "/rt update - updates the config"
     ];
 
   },
@@ -254,19 +228,17 @@ var RanksAndTitles = {
 
   registerPermissions: function() {
     var i = 0,
-      ii = 0,
-      p = this.Config.Permissions.length,
       j = this.Config.prefixTitles.length;
     //prefix permissions
     for (i; i < j; i++) {
-      if (!permission.PermissionExists(this.Config.prefixTitles[i].permission)) {
-        permission.RegisterPermission(this.Config.prefixTitles[i].permission, this.Plugin);
+      if (!permission.GroupExists(this.Config.prefixTitles[i].permission)) {
+        permission.CreateGroup(this.Config.prefixTitles[i].permission, this.Config.prefixTitles[i].permission, i);
       }
     }
     //single permissions
-    for (ii; ii < p; ii++) {
-      if (!permission.PermissionExists(this.Config.Permissions[ii])) {
-        permission.RegisterPermission(this.Config.Permissions[ii], this.Plugin);
+    for (var perm in this.Config.Permissions) {
+      if (!permission.PermissionExists(this.Config.Permissions[perm])) {
+        permission.RegisterPermission(this.Config.Permissions[perm], this.Plugin);
       }
     }
   },
@@ -302,24 +274,13 @@ var RanksAndTitles = {
       TitlesData.PlayerData[steamID].KDR = TitlesData.PlayerData[steamID].KDR || 0;
       TitlesData.PlayerData[steamID].Deaths = TitlesData.PlayerData[steamID].Deaths || 0;
       TitlesData.PlayerData[steamID].Karma = TitlesData.PlayerData[steamID].Karma || 0;
-      TitlesData.PlayerData[steamID].isAdmin = TitlesData.PlayerData[steamID].isAdmin || (authLvl >= 2) || false;
+      TitlesData.PlayerData[steamID].isAdmin = TitlesData.PlayerData[steamID].isAdmin || (authLvl >= 2) || this.hasPermission(player, this.Config.Permissions.staff) || false;
       TitlesData.PlayerData[steamID].hidden = TitlesData.PlayerData[steamID].hidden || false;
       this.saveData();
       this.setRankTitle(steamID, player);
     } catch (e) {
       print(e.message.toString());
     }
-  },
-  //This function is here so that if a player has an exisiting Group Tag, we don't grab that tag.
-  //same with the color tag, but that wont be an issue soon.
-  getName: function(player) {
-    var realName = "";
-    if (GroupsAPI || clansOn) {
-      realName = player.displayName.split("] ").pop();
-    } else {
-      realName = player.displayName;
-    }
-    return realName;
   },
 
   saveData: function() {
@@ -710,7 +671,6 @@ var RanksAndTitles = {
   //and then sends appropriate data where it needs to go, it then runs the players through the
   //KDR and ranks functions (remember our hub?) this process may also change during the re write.
   OnEntityDeath: function(entity, hitinfo) {
-    try {
       var victim = entity,
         attacker = hitinfo.Initiator,
         victimID,
@@ -736,30 +696,26 @@ var RanksAndTitles = {
         if (karmaOn && TitlesData.PlayerData[victimID].Karma >= 0) {
           TitlesData.PlayerData[killerID].Kills += 1;
           TitlesData.PlayerData[victimID].Deaths += 1;
-          TitlesData.PlayerData[killerID].Karma -= (this.getKarma(victimID) - this.checkPunish(killerID, victimID));
+          TitlesData.PlayerData[killerID].Karma -= /*(*/this.getKarma(victimID); /*- this.checkPunish(killerID, victimID));*/
           rust.SendChatMessage(killer, prefix.ranks, msgs.loseKarma + " (" + this.getKarma(victimID) + ")", "0");
         } else if (karmaOn && TitlesData.PlayerData[victimID].Karma < 0) {
           TitlesData.PlayerData[killerID].Kills += 1;
           TitlesData.PlayerData[victimID].Deaths += 1;
-          TitlesData.PlayerData[killerID].Karma += (this.getKarma(victimID) + this.checkPunish(killerID, victimID));
+          TitlesData.PlayerData[killerID].Karma += /*(*/this.getKarma(victimID); /*- this.checkPunish(killerID, victimID));*/
           rust.SendChatMessage(killer, prefix.ranks, msgs.gainKarma + " (" + this.getKarma(victimID) + ")", "0");
         } else {
           TitlesData.PlayerData[killerID].Kills += 1;
           TitlesData.PlayerData[victimID].Deaths += 1;
         }
         this.setRankTitle(killerID, killer);
-        this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
-        this.updateKDR(TitlesData.PlayerData[killerID].Kills, TitlesData.PlayerData[killerID].Deaths, killer);
+        this.updateKDR(attackerID, victimID);
       } else if (victim.ToPlayer() && victim.displayName === attacker.displayName) {
         victimID = rust.UserIDFromPlayer(victim);
         TitlesData.PlayerData[victimID].Deaths += 1;
-        this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
+        this.updateKDR(attackerID, victimID);
       } else {
         return false;
       }
-    } catch (e) {
-      print(e.message.toString());
-    }
   },
 
   /*-----------------------------------------------------------------
@@ -810,11 +766,15 @@ var RanksAndTitles = {
   //this function is caused by our death checker, this sends data to our data file to keep track of a KDR for the
   //player normally it is called twice each kill (called at the same time) luckily it processes and handles the
   //Ids efficiently so it knows where to send what.
-  updateKDR: function(kills, deaths, player) {
-    var steamID = rust.UserIDFromPlayer(player);
-    var killsToDeaths = kills / deaths;
-    killsToDeaths = Math.ceil(killsToDeaths * 100) / 100;
-    TitlesData.PlayerData[steamID].KDR = killsToDeaths;
+  updateKDR: function(attackerID, victimID) {
+    var attacker = TitlesData.PlayerData[attackerID].Kills / TitlesData.PlayerData[attackerID].Deaths;
+    var victim = TitlesData.PlayerData[victimID].Kills / TitlesData.PlayerData[victimID].Deaths;
+    victim = Math.ceil(victim * 100) / 100;
+    attacker = Math.ceil(attacker * 100) / 100;
+    if (victim === "infinite") victim = 0;
+    if (attacker === "infinite") attacker = 0;
+    TitlesData.PlayerData[attackerID].KDR = attacker;
+    TitlesData.PlayerData[victimID].KDR = victim;
     this.saveData();
   },
 
@@ -903,6 +863,7 @@ var RanksAndTitles = {
     try {
       var getPlayer = this.findPlayerByName(player, args);
       TitlesData.PlayerData[getPlayer[1]].Prefix = "";
+      permission.RemoveUserGroup(getPlayer[1], this.Config.prefixTitles[i].permission);
       this.saveData();
       this.setRankTitle(getPlayer[1], getPlayer[0]);
       rust.SendChatMessage(player, prefix.ranks, msgs.reset + " " + getPlayer[0].displayName, "0");
@@ -936,6 +897,7 @@ var RanksAndTitles = {
       for (i; i < j; i++) {
         if (args[2].toLowerCase() === this.Config.prefixTitles[i].title.toLowerCase()) {
           TitlesData.PlayerData[getPlayer[1]].Prefix = this.Config.prefixTitles[i].title;
+          permission.AddUserGroup(getPlayer[1], this.Config.prefixTitles[i].permission);
         }
       }
       rust.SendChatMessage(player, prefix.ranksandtitles, msgs.setSuccs, "0");
@@ -990,7 +952,7 @@ var RanksAndTitles = {
     if (!this.Config.Settings.useBoth) {
       for (i; i < this.Config.main.length; i++) {
         if (TitlesData.PlayerData[steamID].Title === this.Config.main[i].title) {
-          var titleColor = this.Config.main[i].Color;
+          titleColor = this.Config.main[i].Color;
           colorArr.push(titleColor);
         }
       }
@@ -1041,6 +1003,7 @@ var RanksAndTitles = {
           color = this.getColor(steamID),
           displayName = player.displayName,
           useBoth = this.Config.Settings.useBoth,
+          chatColor = "<color=" + this.Config.Settings.chatColor + ">";
           authLevel = player.net.connection.authLevel;
 
         if (colorOn && this.hasPermission(player, this.Config.Permissions.isStaff)) {
@@ -1075,7 +1038,7 @@ var RanksAndTitles = {
           titleColor = "";
         }
 
-        formattedMsg = prefixColor + usePrefix + useColor + displayName + "</color> " + titleColor + useTitle + "<color=#d9bb9a>" + msg + "</color>";
+        formattedMsg = prefixColor + usePrefix + useColor + displayName + "</color> " + titleColor + useTitle + chatColor + msg + "</color>";
         global.ConsoleSystem.Broadcast("chat.add", steamID, formattedMsg);
         print(player.displayName + ": " + msg);
         return false;
