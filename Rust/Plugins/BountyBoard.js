@@ -1,19 +1,3 @@
-//TODO: Timer idea, implement it with targets plan, to set target for bonus bounty but on a timer that decreases the bounty over time
-//Find a way to prevent bounty abuse.
-
-//ChangeLog: v1.1.0 (Untested)
-//Added check for negative values
-//Added FriendsAPI and ClansAPI support
-//Added broadcast messages
-//Added Permissions
-//Added Permission checks
-//Added Permission Registering
-//Added Economics Support
-//Built Target System
-//Built Timer Handlers
-//Built modifier degrade
-//Added global timer for main repeat timer
-
 var BountyBoard = {
   Title: "Bounty Board",
   Author: "Killparadise",
@@ -117,13 +101,6 @@ var BountyBoard = {
 
   OnPlayerInit: function(player) {
     this.checkPlayerData(player);
-    if (BountyData.TimerData[steamID].paused !== "" || BountyData.TimerData[steamID].paused !== undefined) this.handleTimer(player, "login");
-  },
-
-  OnPlayerDisconnected: function(player) {
-    if (BountyData.PlayerData[steamID].isTarget) {
-      this.handleTimer(player, "logout");
-    }
   },
 
   //----------------------------------------
@@ -243,13 +220,6 @@ var BountyBoard = {
         case "add":
           this.addBounty(player, cmd, args);
           break;
-        case "target":
-          if (this.Config.targetSettings.enableTarget) {
-            this.setTarget(player, cmd, args);
-          } else {
-            rust.SendChatMessage(player, this.prefix, this.msgs.disabled.replace("{function}", "Target"), "0");
-          }
-          break;
         case "board":
           this.checkBoard(player, cmd, args);
           break;
@@ -306,7 +276,7 @@ var BountyBoard = {
     } else {
       rust.SendChatMessage(player, this.prefix, this.msgs.invSyn.replace("{cmd}", "/bty target playername"), "0");
     }
-
+    print(pName[0].displayName);
     if (pName[0].displayName !== player.displayName && BountyData.PlayerData[pName[1]].Bounty.length > 0 && pName[0].IsConnected()) {
       BountyData.PlayerData[steamID].Target = pName[0].displayName;
       BountyData.PlayerData[pName[1]].isTarget = true;
@@ -385,8 +355,7 @@ var BountyBoard = {
       var mainList = main.itemList.GetEnumerator();
       var targetPlayer = this.findPlayerByName(player, args);
       var argObj;
-
-      if (args.length === 3) {
+      if (args.length === 4) {
         argObj = {
           "plyrName": args[1],
           "amt": Number(args[2]),
@@ -402,7 +371,7 @@ var BountyBoard = {
             break;
           }
         }
-      } else if (args.length === 2) {
+      } else if (args.length === 3) {
         argObj = {
           "plyrName": args[1],
           "amt": Number(args[2]),
@@ -557,12 +526,6 @@ var BountyBoard = {
 
   },
 
-
-  runCheck: function() {
-    print("Running test");
-    this.checkForFriends("76561198061032909", "76561198035139464");
-  },
-
   //----------------------------------------
   //          Handle Friends
   //	Check if players are friends/clan mates
@@ -570,24 +533,13 @@ var BountyBoard = {
   checkForFriends: function(victimID, attackerID) {
     //check for friends
     try {
-      print("Inside checkForFriends with: ");
-      print(attackerID + " Attacker");
-      print(victimID + " Victim");
-      print(this.Config.Settings.antiFriend);
-      print(friendsAPI);
-      print(clansOn.Call("HasFriend", attackerID, victimID));
       if (this.Config.Settings.antiFriend) {
         if (friendsAPI && friendsAPI.Call("HasFriend", attackerID, victimID)) {
-          print("Killer friends with victim");
           return true;
         } else if (clansOn && !clansOn.Call("HasFriend", attackerID, victimID)) {
-          print("Clans Logic");
           attackerClan = clansOn.Call("FindClanByUser", attackerID);
           victimClan = clansOn.Call("FindClanByUser", victimID);
-          print("attackerClan: " + attackerClan);
-          print("victimClan: " + victimClan);
           if (attackerClan === victimClan) {
-            print("Found clans, matching");
             return true;
           } else {
             return false;

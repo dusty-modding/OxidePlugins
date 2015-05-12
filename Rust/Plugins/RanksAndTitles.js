@@ -653,9 +653,10 @@ var RanksAndTitles = {
     for (i; i < j; i++) {
       if (this.Config.main[i].title === TitlesData.PlayerData[victimID].Title) {
         return this.Config.main[i].karmaModifier;
+      } else {
+        return 1;
       }
     }
-    return 1;
   },
 
   /*-----------------------------------------------------------------
@@ -670,6 +671,7 @@ var RanksAndTitles = {
   //and then sends appropriate data where it needs to go, it then runs the players through the
   //KDR and ranks functions (remember our hub?) this process may also change during the re write.
   OnEntityDeath: function(entity, hitinfo) {
+    try {
       var victim = entity,
         attacker = hitinfo.Initiator,
         victimID,
@@ -695,26 +697,30 @@ var RanksAndTitles = {
         if (karmaOn && TitlesData.PlayerData[victimID].Karma >= 0) {
           TitlesData.PlayerData[killerID].Kills += 1;
           TitlesData.PlayerData[victimID].Deaths += 1;
-          TitlesData.PlayerData[killerID].Karma -= /*(*/this.getKarma(victimID); /*- this.checkPunish(killerID, victimID));*/
+          TitlesData.PlayerData[killerID].Karma -= (this.getKarma(victimID) - this.checkPunish(killerID, victimID));
           rust.SendChatMessage(killer, prefix.ranks, msgs.loseKarma + " (" + this.getKarma(victimID) + ")", "0");
         } else if (karmaOn && TitlesData.PlayerData[victimID].Karma < 0) {
           TitlesData.PlayerData[killerID].Kills += 1;
           TitlesData.PlayerData[victimID].Deaths += 1;
-          TitlesData.PlayerData[killerID].Karma += /*(*/this.getKarma(victimID); /*- this.checkPunish(killerID, victimID));*/
+          TitlesData.PlayerData[killerID].Karma += (this.getKarma(victimID) + this.checkPunish(killerID, victimID));
           rust.SendChatMessage(killer, prefix.ranks, msgs.gainKarma + " (" + this.getKarma(victimID) + ")", "0");
         } else {
           TitlesData.PlayerData[killerID].Kills += 1;
           TitlesData.PlayerData[victimID].Deaths += 1;
         }
         this.setRankTitle(killerID, killer);
-        this.updateKDR(attackerID, victimID);
+        this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
+        this.updateKDR(TitlesData.PlayerData[killerID].Kills, TitlesData.PlayerData[killerID].Deaths, killer);
       } else if (victim.ToPlayer() && victim.displayName === attacker.displayName) {
         victimID = rust.UserIDFromPlayer(victim);
         TitlesData.PlayerData[victimID].Deaths += 1;
-        this.updateKDR(attackerID, victimID);
+        this.updateKDR(TitlesData.PlayerData[victimID].Kills, TitlesData.PlayerData[victimID].Deaths, victim.ToPlayer());
       } else {
         return false;
       }
+    } catch (e) {
+      print(e.message.toString());
+    }
   },
 
   /*-----------------------------------------------------------------
@@ -769,17 +775,14 @@ var RanksAndTitles = {
   //this function is caused by our death checker, this sends data to our data file to keep track of a KDR for the
   //player normally it is called twice each kill (called at the same time) luckily it processes and handles the
   //Ids efficiently so it knows where to send what.
-  updateKDR: function(attackerID, victimID) {
-    var attacker = TitlesData.PlayerData[attackerID].Kills / TitlesData.PlayerData[attackerID].Deaths;
-    var victim = TitlesData.PlayerData[victimID].Kills / TitlesData.PlayerData[victimID].Deaths;
-    victim = Math.ceil(victim * 100) / 100;
-    attacker = Math.ceil(attacker * 100) / 100;
-    if (victim === "infinite") victim = 0;
-    if (attacker === "infinite") attacker = 0;
-    TitlesData.PlayerData[attackerID].KDR = attacker;
-    TitlesData.PlayerData[victimID].KDR = victim;
+  updateKDR: function(kills, deaths, player) {
+    var steamID = rust.UserIDFromPlayer(player);
+    var killsToDeaths = kills / deaths;
+    killsToDeaths = Math.ceil(killsToDeaths * 100) / 100;
+    TitlesData.PlayerData[steamID].KDR = killsToDeaths;
     this.saveData();
   },
+
 
   //this is our function that is called by /rt stats it is setup so it will display the currently asking players
   //stats from the data file. It searches the playerdata via steamID.
@@ -963,6 +966,7 @@ var RanksAndTitles = {
       for (i; i < this.Config.main.length; i++) {
         if (TitlesData.PlayerData[steamID].Title === this.Config.main[i].title) {
           titleColor = this.Config.main[i].Color;
+          if (chatHandler) break;
           colorArr.push(titleColor);
         }
       }
