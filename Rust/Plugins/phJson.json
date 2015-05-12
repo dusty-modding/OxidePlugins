@@ -1,0 +1,20 @@
+{
+  "pHandler": {
+    "Permissions": {
+      "perm1": "canperm1",
+      "perm2": "canperm2",
+      "perm3": "canperm3"
+    },
+    "Groups": {
+      "group1": [
+        "canperm1"
+        ],
+      "group2": [
+        "canperm1",
+        "canperm2",
+        "canperm3"
+      ]
+    },
+    "delete": true
+  }
+}

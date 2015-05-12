@@ -4,7 +4,7 @@ PermHandle: {
     options: {},
     groupPerms: {groupName: {perms}}
     perms: {},
-    groups: {},
+    Groups: {},
     commands: {}
 }
 possible options:
@@ -17,98 +17,95 @@ var PermissionHandler = {
   Author: "Killparadise",
   Version: V(1, 0, 0),
   Init: function() {
-    global = importNamespace("");
     command.AddChatCommand("ph", this.Plugin, "cmdSwitch");
-    // command.AddConsoleCommand("ph.set", this.Plugin, "ccmdStart");
   },
 
   OnServerInitialized: function() {
     passed = false;
     this.msgs = this.Config.Messages;
-    this.prefix = this.Config.Prefix;
-    pluginList = plugins.GetAll();
-    this.getPluginData();
   },
 
   LoadDefaultConfig: function() {
     this.Config = {
       "Version": "1.0",
       "Permissions": {
-        "PermissionHandler": {
-          "permissions": {
-            "setCmd": "canSetStaff",
-            "remCmd": "canRemStaff"
-          },
-          "groups": {
-            "default": {
-              "permission": "default",
-              "default": true
-            },
-            "donor": {
-              "permission": "donor",
-              "default": false
-            },
-            "mod": {
-              "permission": "moderator",
-              "default": false
-            },
-            "admin": {
-              "permission": "admin",
-              "default": false
-            },
-            "owner": {
-              "permission": "owner",
-              "default": false
-            }
-          },
-          "commands": {
-            "ph": { //switch base command (command that takes multiple args)
-              "args": ["group", "rgroup"],
-              "perms": ["setCmd", "remCmd"]
-            },
-            "test": { //single base command (commands like /help single and simple)
-              "perms": "canTest"
-            }
-          }
-        }
+        "group": "canCreateGroup",
+        "rgroup": "canRemGroup",
+        "add": "canAdd",
+        "set": "canSet",
+        "remove": "canRem",
+        "default": "canRegister"
+      },
+      "Groups": {
+        "player": [],
+        "moderator": [],
+        "admin": [
+          "canCreateGroup",
+          "canRemGroup",
+          "canAdd",
+          "canSet",
+          "canRem",
+          "canRegister"
+        ]
       },
       "Prefix": "PermissionHandler",
       "Messages": {
         "shortArgs": "Not enough values passed",
         "noGroup": "Could not find the group {group}",
-        "noPlayer": "Could not find the Player {player}",
         "noPermission": "You do not have permission to do this.",
-        "success": "Successfully {SetOrRem} player!"
-      },
+        "success": "Successfully added player to {group}!",
+        "noPlugin": "No Plugin Found. Please try again.",
+        "noObject": "The plugin {plugin} does not have proper Permission handler support.",
+        "alreadyExists": "<color=red>Group Already Exists!</color>",
+        "doesntExists": "<color=red>Group does not exist!</color>",
+        "addedToGroup": "<color=lime>{player}</color> has added you to the<color=lime> {group} </color>permissions group.",
+        "notFound": "Player not Found"
+      }
     };
   },
 
+
   /*-----------------------------------------------------------------
-          Single API function
+                        API
+    -----------------------------------------------------------------
+          checkPass
           -- Returns true or false passed on if perms check passed
    ------------------------------------------------------------------*/
-  checkPass: function(passed) {
+  checkPass: function() {
     return passed;
   },
 
   /*-----------------------------------------------------------------
-          When the Player finishes loading in
+          String Builder
+          -- Builds and returns a string based off array of values
    ------------------------------------------------------------------*/
-  OnPlayerInit: function(player) {
-    var steamID = rust.UserIDFromPlayer(player);
-    this.giveDefault(player, steamID);
+  buildString: function(string, values) {
+    var temp = [],
+      i = 0,
+      sb = "";
+
+    if (values.length === 0) {
+      return string;
+    }
+    temp.push(string.match(/\{([^{]+)\}/g));
+    temp = temp.toString().split(",");
+    for (i; i < temp.length; i++) {
+      sb = string.replace(temp[i], values[i]);
+      print(temp[i] + " values: " + values[i]);
+    }
+    return sb;
   },
 
   /*-----------------------------------------------------------------
-            Our functions to find players
-  ------------------------------------------------------------------*/
-
-  //Find player by name this supports partial names, full names, and steamIDs its also case-insensitive
-  findPlayerByName: function(player, args) {
+          findPlayer
+          -- Finds a players based on name or SteamID
+          -- returns an array with a base player, and steamid
+   ------------------------------------------------------------------*/
+  findPlayer: function(playerName) {
     try {
       var found = [],
         foundID;
-      var playerName = args[1].toLowerCase();
+      playerName = playerName.toLowerCase();
       var itPlayerList = global.BasePlayer.activePlayerList.GetEnumerator();
       while (itPlayerList.MoveNext()) {
 
@@ -131,7 +128,6 @@ var PermissionHandler = {
         found.push(foundID);
         return found;
       } else {
-        rust.SendChatMessage(player, prefix.PermissionHandler, msgs.noPlayer.replace("{player}", playername), "0");
         return false;
       }
     } catch (e) {
@@ -139,192 +135,222 @@ var PermissionHandler = {
     }
   },
 
-  //Find a user based solely on their steamID
-  findPlayer: function(playerid) {
-    var targetPlayer = global.BasePlayer.Find(playerid);
-    if (targetPlayer) {
-      return targetPlayer;
+  /*-----------------------------------------------------------------
+          Permission Check
+          -- checks user for permission
+          -- sets passed var, and returns boolean
+   ------------------------------------------------------------------*/
+  hasPermission: function(player, perm) {
+    var steamID = rust.UserIDFromPlayer(player);
+    if (player.net.connection.authLevel === 2) {
+      passed = true;
+    } else if (permission.UserHasPermission(steamID, perm)) {
+      passed = true;
     } else {
+      player.ChatMessage(this.msgs.noPermission);
+      passed = false;
+    }
+    return passed;
+  },
+
+  /*-----------------------------------------------------------------
+          Register Permissions
+          -- Registers all single and group permissions
+          -- Builds Permission Groups
+   ------------------------------------------------------------------*/
+  registerPermissions: function() {
+    var i = 0;
+    g = 3;
+    //register single permissions
+    for (var key in this.Config.Permissions) {
+      if (!permission.PermissionExists(this.Config.Permissions[key], this.Plugin)) {
+        permission.RegisterPermission(this.Config.Permissions[key], this.Plugin);
+      }
+    }
+    //register our Groups
+    for (var group in this.Config.Groups) {
+      if (!permission.GroupExists(group)) {
+        permission.CreateGroup(group, group, g++);
+      }
+      //register permissions to Groups
+      for (i; i < this.Config.Groups[key].length; i++) {
+        if (!permission.GroupHasPermission(group, this.Config.Groups[key][i])) {
+          permission.GrantGroupPermission(group, this.Config.Groups[key][i], this.Plugin);
+        }
+      }
+    }
+  },
+
+  /*-----------------------------------------------------------------
+          setGoup
+          -- Builds a new permissions group
+          Syntax: /ph group groupname
+   ------------------------------------------------------------------*/
+  setGroup: function(player, cmd, args) {
+    var name = args[1].toString();
+    if (!permission.GroupExists(name)) {
+      permission.CreateGroup(name.toLowerCase(), name, g++);
+    } else {
+      player.ChatMessage(this.msgs.alreadyExists);
       return false;
     }
   },
 
-  getPluginData: function() {
-    var pObj = {},
-      temp = [];
-    for (var key in pluginList) {
-      var plugin = pluginList[key];
-      if ((pluginList[key].Config !== undefined && pluginList[key].Config !== null) &&
-        (pluginList[key].Config.PermHandle !== undefined && pluginList[key].Config.PermHandle !== null)) {
-        print("Found Permission Handler Support in: " + pluginList[key].Title);
-        var groups = pluginList[key].Config.PermHandle.groups;
-        this.Config.Permissions[pluginList[key].Title] = {
-          permissions: pluginList[key].Config.PermHandle.perms,
-          groups: groups,
-          commands: pluginList[key].Config.PermHandle.commands,
-          additions: pluginList[key].Config.PermHandle.additions
-        };
-          this.registerPermissions();
-      }
-    }
-    this.SaveConfig();
-  },
-
-  hasPermission: function(player, perm) {
-    var steamID = rust.UserIDFromPlayer(player);
-    if (player.net.connection.authLevel === 2) {
-      return this.checkPass(true);
-    }
-
-    if (permission.UserHasPermission(steamID, perm)) {
-      return this.checkPass(true);
-    }
-    rust.SendChatMessage(player, prefix.PermissionHandler, msgs.noPermission, "0");
-    return this.checkPass(false);
-  },
-
-  registerPermissions: function() {
-    try {
-    var i = 0;
-    print("registering perms...");
-    //register perms for groups and regular permissions
-    for (var key in this.Config.Permissions) {
-      for (var perm in this.Config.Permissions[key].permissions) {
-        if (!permission.PermissionExists(this.Config.Permissions[key].permissions[perm])) {
-          print("Plugin: " + this.Config.Permissions[key]);
-          print("Registering permission: " + this.Config.Permissions[key].permissions[perm]);
-          permission.RegisterPermission(this.Config.Permissions[key].permissions[perm], this.Plugin);
-        }
-      }
-      //Handle additions to basic groups
-      for (var add in this.Config.Permissions[key].additions) {
-        for (i; i < this.Config.Permissions[key].additions[add].length; i++) {
-          if (!permission.PermissionExists(this.Config.Permissions[key].additions[add][i]) &&
-          permission.GroupExists(this.Config.Permissions[key].additions[add])) {
-            permission.RegisterPermission(this.Config.Permissions[key].additions[add][i], this.Plugin);
-            permission.GrantGroupPermission(this.Config.Permissions[key].additions[add], this.Config.Permissions[key].additions[add][i], this.Plugin);
-          }
-        }
-      }
-      for (var group in this.Config.Permissions[key].groups) {
-        if (!permission.GroupExists(this.Config.Permissions[key].groups[group])) {
-          print("Registering Group: " + this.Config.Permissions[key].groups[group]);
-          permission.CreateGroup(this.Config.Permissions[key].groups[group], this.Config.Permissions[key].groups[group], i);
-          i++;
-        }
-      }
-    }
-  } catch(e) {
-    print(e.message.toString());
-  }
-  },
-
-  giveDefault: function(player, steamID) {
-    if (permission.GetUserGroups(steamID) === "") {
-      permission.AddUserGroup(steamID, "default");
-    }
-  },
-
-  setGroup: function(player, cmd, args) {
-    var getPlayer = this.findPlayerByName(args[1].toString());
-    var steamID = rust.UserIDFromPlayer(getPlayer[0]);
-    var pos = args[2].toString();
-    if (args.length === 3 && permission.GroupExists(pos)) {
-      permission.AddUserGroup(steamID, pos);
-      rust.SendChatMessage(player, prefix.PermissionHandler, msgs.success.replace("{SetOrRem}", "added"), "0");
-    } else if (args.length !== 3) {
-      rust.SendChatMessage(player, prefix.PermissionHandler, msgs.shortArgs, "0");
-    } else {
-      rust.SendChatMessage(player, prefix.PermissionHandler, msgs.noGroup.replace("{group}", pos), "0");
-    }
-
-  },
-
+  /*-----------------------------------------------------------------
+          remGroup
+          -- Removes a desired permissions group
+          Syntax: /ph rgroup groupname
+   ------------------------------------------------------------------*/
   remGroup: function(player, cmd, args) {
-    var getPlayer = this.findPlayerByName(args[1].toString());
-    var steamID = rust.UserIDFromPlayer(getPlayer[0]);
-    var pos = args[2].toString();
-    if (args.length === 3 && permission.GroupExists(pos)) {
-      permission.RemoveUserGroup(steamID, pos);
-      rust.SendChatMessage(player, prefix.PermissionHandler, msgs.success.replace("{SetOrRem}", "removed"), "0");
-    } else if (args.length !== 3) {
-      rust.SendChatMessage(player, prefix.PermissionHandler, msgs.shortArgs, "0");
+    var name = args[1].toString();
+    if (permission.GroupExists(name)) {
+      permission.RemoveGroup(name.toLowerCase());
     } else {
-      rust.SendChatMessage(player, prefix.PermissionHandler, msgs.PlayerNotFound.replace("{player}", args[1]), "0");
+      player.ChatMessage(this.msgs.doesntExists);
+      return false;
     }
   },
 
+  /*-----------------------------------------------------------------
+          addPlugin
+          -- Adds a desired plugin that supports
+          -- permission handler objects and build them into
+          -- our config and re run register
+          Syntax: /ph add pluginname
+            --Note: pluginname needs to be the EXACT name
+   ------------------------------------------------------------------*/
+  addPlugin: function(player, cmd, args) {
+    //First grab our plugin
+    var plugin = plugins.Find(args[1]);
+    //Did the user enter a correct plugin?
+    if (!plugin) {
+      player.ChatMessage(this.msgs.noPlugin);
+      return false;
+    }
+    //Now does the plugin have a Permission Handler object?
+    if (plugin.Config.pHandler) {
+      print("[Permission Handler]: Located Permission Handler Object... Uploading...");
+      if (plugin.Config.pHandler.Groups) {
+        for (var key in plugin.Config.pHandler.Groups) {
+          this.Config.Groups[key] = plugin.Config.pHandler.Groups[key];
+        }
+      }
+      if (plugin.Config.pHandler.Permissions) {
+        for (var perm in plugin.Config.pHandler.Permissions) {
+          this.Config.Permissions[perm] = plugin.Config.pHandler.Permissions[perm];
+        }
+      }
+      this.SaveConfig();
+      this.registerPermissions();
+      this.finish(plugin);
+    } else {
+      player.ChatMessage(this.msgs.noObject.replace("{plugin}", args[1]));
+      return false;
+    }
+
+  },
+
+  /*-----------------------------------------------------------------
+          setPlayer
+          -- Adds a player to a desired permission group
+          Syntax: /ph set playername groupname
+   ------------------------------------------------------------------*/
+  setPlayer: function(player, cmd, args) {
+    var target = this.findPlayer(args[1]);
+    var group = args[2];
+    if (!target) {
+      player.ChatMessage(this.msgs.notFound);
+      return false;
+    }
+    if (permission.GroupExists(group)) {
+      permission.AddUserGroup(target[1], group);
+      player.ChatMessage(this.msgs.success.replace("{group}", group));
+      target[0].ChatMessage(this.buildString(this.msgs.addedToGroup, [player.displayName, group]));
+    } else {
+      player.ChatMessage(this.msgs.doesntExists);
+    }
+
+  },
+
+  /*-----------------------------------------------------------------
+          removePlayer
+          -- Removes a player from a permission group
+          Syntax: /ph remove playername groupname
+   ------------------------------------------------------------------*/
+  removePlayer: function(player, cmd, args) {
+    var target = this.findPlayer(args[1]);
+    var group = args[2];
+    if (!target) {
+      player.ChatMessage(this.msgs.notFound);
+      return false;
+    }
+    var tarGroups = permission.GetUserGroups(target[1]);
+
+    if (permission.GroupExists(group) && tarGroups.indexOf(group) > -1) {
+      permission.AddUserGroup(target[1], group);
+      player.ChatMessage(this.msgs.success.replace("{group}", group));
+      target[0].ChatMessage(this.buildString(this.msgs.addedToGroup, [player.displayName, group]));
+    } else {
+      player.ChatMessage(this.msgs.doesntExists);
+    }
+
+  },
+
+  /*-----------------------------------------------------------------
+          cmdSwitch
+          -- Handles command arguments & permission checks
+   ------------------------------------------------------------------*/
   cmdSwitch: function(player, cmd, args) {
-    var steamID = rust.UserIDFromPlayer(player);
+    var steamID = rust.UserIDFromPlayer(player), allowed;
+    var command = args[0];
+    if (command === "") {
+      allowed = this.hasPermission(player, this.Config.Permissions.default);
+    } else {
+      allowed = this.hasPermission(player, this.Config.Permissions.command);
+    }
     switch (args[0]) {
       case "group":
-        if (this.hasPermission(player, this.Config.Permissions.PermissionHandler.canSetStaff)) {
-          this.setGroup(player, cmd, args);
-        } else {
-          rust.SendChatMessage(player, prefix.PermissionHandler, msgs.noPermission, "0");
-        }
+        if (allowed) this.setGroup(player, cmd, args);
         break;
       case "rgroup":
-        if (this.hasPermission(player, this.Config.Permissions.PermissionHandler.canRemStaff)) {
-          this.remGroup(player, cmd, args);
-        } else {
-          rust.SendChatMessage(player, prefix.PermissionHandler, msgs.noPermission, "0");
-        }
+        if (allowed) this.remGroup(player, cmd, args);
+        break;
+      case "add":
+        if (allowed) this.addPlugin(player, cmd, args);
+        break;
+      case "set":
+        if (allowed) this.setPlayer(player, cmd, args);
+        break;
+      case "remove":
+        if (allowed) this.removePlayer(player, cmd, args);
         break;
       default:
-        rust.SendChatMessage(player, prefix.PermissionHandler, msgs.shortArgs, "0");
+        if (allowed) {
+          player.ChatMessage(this.msgs.register);
+          this.registerPermissions();
+        }
         break;
     }
 
   },
 
-  finished: function(plugin) {
-    print("Finished grabbing data from config and storing it on local config. Removing JSON object.");
-    delete plugin.Config.PermHandle;
-    this.SaveConfig();
-    return false;
+  /*-----------------------------------------------------------------
+          finished
+          -- Removes the handler permissions from the other
+          -- plugin, or saves it if delete is set to false
+   ------------------------------------------------------------------*/
+  finished: function(ph) {
+    if (ph.Config.pHandler.delete === undefined || ph.Config.pHandler.delete) {
+      print("[Permission Handler]: Finished grabbing data from config and storing it on local config. Removing JSON object.");
+      delete ph.Config.pHandler;
+      ph.SaveConfig();
+    } else {
+      print("[Permission Handler]: Plugin wants to keep the ph Object for local use... Not deleting.");
+      return false;
+    }
   },
 
-  /*OnPlayerChat: function(arg) {
-    var msg = arg.GetString(0, "text");
-    var player = arg.connection.player;
-    if (msg.substring(1, 1) === "/") {
-      print("caught command");
-      for (var key in this.Config.Permissions) {
-        for (var prop in this.Config.Permissions[key].commands) {
-          if (this.Config.Permissions[key].commands[prop] === arg[0].toString() && this.Config.Permissions[key].commands[prop].args.length > 1) {
-            print("caught switch command");
-            for (var i = 0; i < this.Config.Permissions[key].commands[prop].args.length; i++) {
-              if (arg[1].toString() === this.Config.Permissions[key].commands[prop].args[i]) {
-                if (this.hasPermission(player, this.Config.Permissions[key].commands[prop].perms[i])) {
-                  passed = true;
-                  return false;
-                } else {
-                  passed = false;
-                  return false;
-                }
-              }
-            }
-          } else if (this.Config.Permissions[key].commands[prop] === arg[0].toString() && this.Config.Permissions[key].commands[prop].args.length === 0) {
-            print("caught single command");
-            if (this.hasPermission(player, this.Config.Permissions[key].commands[prop].perms)) {
-              passed = true;
-              return false;
-            } else {
-              passed = false;
-              return false;
-            }
-          } else {
-            print("Fail safe; no command found using arg: ");
-            for (var i = 0; i < arg.length; i++) {
-              print(arg[i]);
-              return false;
-            }
-          }
-        }
-      }
+  OnPlayerChat: function(args) {
 
-    }
-    return false;
-  }*/
+  }
 };
