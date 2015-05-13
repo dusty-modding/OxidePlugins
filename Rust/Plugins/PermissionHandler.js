@@ -1,17 +1,3 @@
-/*
-Basic setup in config will look like:
-PermHandle: {
-    options: {},
-    groupPerms: {groupName: {perms}}
-    perms: {},
-    Groups: {},
-    commands: {}
-}
-possible options:
-    autoAssign - boolean
-    default - default permission group
- */
-
 var PermissionHandler = {
   Title: "Permissions Handler",
   Author: "Killparadise",

@@ -1,7 +1,7 @@
 var BountyBoard = {
   Title: "Bounty Board",
   Author: "Killparadise",
-  Version: V(1, 1, 0),
+  Version: V(1, 1, 2),
   Init: function() {
     this.registerPermissions();
     this.getData();
@@ -13,18 +13,20 @@ var BountyBoard = {
     this.prefix = this.Config.Prefix;
     friendsAPI = plugins.Find('0friendsAPI');
     clansOn = plugins.Find('Clans');
-    if (this.Config.Settings.useEcon) econAPI = plugins.Find("00-Economics");
+    if (this.Config.Settings.useEcon) {
+      economy = plugins.Find("00-Economics");
+      econAPI = economy.Call("GetEconomyAPI");
+    }
     this.updateConfig();
     command.AddChatCommand("bty", this.Plugin, "cmdBounty");
-    command.AddChatCommand("tester", this.Plugin, "runCheck");
-    globalTimer = timer.Repeat(this.Config.TargetSettings.degradeInterval, 0, function() {
-      this.degradeModifier();
-    }, this.Plugin);
+    //globalTimer = timer.Repeat(this.Config.TargetSettings.degradeInterval, 0, function() {
+    //this.degradeModifier();
+    //}, this.Plugin);
   },
 
-  Unload: function() {
-		globalTimer.Destroy();
-  },
+  // Unload: function() {
+  //   globalTimer.Destroy();
+  // },
 
   updateConfig: function() {
     if (this.Config.Version !== "1.3") {
@@ -136,18 +138,18 @@ var BountyBoard = {
   //----------------------------------------
   //          Finding Player Info
   //----------------------------------------
-  findPlayerByName: function(player, args) {
+  findPlayerByName: function(playerName) {
     try {
-      var global = importNamespace("");
       var found = [],
-        matches = [];
-      var playerName = args[1].toLowerCase();
+        foundID;
+      playerName = playerName.toLowerCase();
       var itPlayerList = global.BasePlayer.activePlayerList.GetEnumerator();
       while (itPlayerList.MoveNext()) {
 
         var displayName = itPlayerList.Current.displayName.toLowerCase();
 
         if (displayName.search(playerName) > -1) {
+          print("found match " + displayName);
           found.push(itPlayerList.Current);
         }
 
@@ -163,7 +165,6 @@ var BountyBoard = {
         found.push(foundID);
         return found;
       } else {
-        rust.SendChatMessage(player, this.prefix, this.msgs.NoPlyrs, "0");
         return false;
       }
     } catch (e) {
@@ -269,7 +270,7 @@ var BountyBoard = {
   },
 
   setTarget: function(player, cmd, args) {
-    var pName = this.findPlayerByName(player, args);
+    var pName = this.findPlayerByName(args[1]);
     var steamID = rust.UserIDFromPlayer(player);
     if (args.length === 1) {
       rust.SendChatMessage(player, this.prefix, this.msgs.curTar, "0");
@@ -353,7 +354,7 @@ var BountyBoard = {
       var authLvl = player.net.connection.authLevel;
       var main = player.inventory.containerMain;
       var mainList = main.itemList.GetEnumerator();
-      var targetPlayer = this.findPlayerByName(player, args);
+      var targetPlayer = this.findPlayerByName(args[1]);
       var argObj;
       if (args.length === 4) {
         argObj = {
@@ -372,18 +373,23 @@ var BountyBoard = {
           }
         }
       } else if (args.length === 3) {
-        argObj = {
-          "plyrName": args[1],
-          "amt": Number(args[2]),
-          "itemName": this.Config.Settings.currency
-        };
-        var econData = econAPI.Call("GetUserData", steamID);
-        econData.Call("Withdraw", argObj.amt);
+        player.ChatMessage("BountyBoard currently does not support Economics, please use item bounties for now.");
+        return false;
+        // argObj = {
+        //   "plyrName": args[1],
+        //   "amt": Number(args[2]),
+        //   "itemName": this.Config.Settings.currency
+        // };
+        // userData = economy.Call("API:GetUserDataFromPlayer", player);
+        // amount = userData[1];
+        // econAPI.Call("Withdraw", argObj.amt);
+        // print("Withdraw Money");
       } else {
         rust.SendChatMessage(player, this.prefix, this.msgs.invSyn.replace("{cmd}", "/bty add itemamt itemname", "0"));
       }
 
       if (argObj.amt > amount) {
+        print(argObj.amt);
         rust.SendChatMessage(player, this.prefix, this.msgs.notEnough.replace("{RssName}", argObj.itemName), "0");
         return false;
       } else if (argObj.amt <= 0) {
@@ -392,11 +398,11 @@ var BountyBoard = {
       } else if (argObj.amt > this.Config.Settings.maxBounty) {
         rust.SendChatMessage(player, this.prefix, this.msgs.overMax.replace("{maxBty}", this.Config.Settings.maxBounty), "0");
         return false;
-      } else if (args.length === 3 && name !== argObj.itemName) {
+      } else if (args.length === 4 && name !== argObj.itemName) {
         rust.SendChatMessage(player, this.prefix, this.msgs.notFound, "0");
         return false;
       }
-      if (args.length === 3) {
+      if (args.length === 4) {
         var definition = global.ItemManager.FindItemDefinition(name);
         main.Take(null, Number(definition.itemid), argObj.amt);
       }
@@ -413,10 +419,6 @@ var BountyBoard = {
       rust.BroadcastChat(this.prefix, this.msgs.boardcastBty.replace(/rss|plyr/gi, function(matched) {
         return rplObj[matched];
       }), "0");
-      if (argObj.amt > amount) {
-        rust.SendChatMessage(player, this.prefix, this.msgs.notEnough.replace("{RssName}", argObj.itemName), "0");
-        return false;
-      }
       this.saveData();
       this.updateBoard(targetPlayer[1], false, argObj.amt, argObj.itemName);
     } catch (e) {
@@ -495,6 +497,7 @@ var BountyBoard = {
       claimed = false;
 
     var getPlayer = this.findPlayerByID(attackerID);
+    print(getPlayer.displayName);
     var i = 0;
     for (i; i < amount.length; i++) {
       this.giveItem(getPlayer, victimID, item[i], amount[i].split(" ").shift());
@@ -505,24 +508,25 @@ var BountyBoard = {
 
   giveItem: function(player, victimID, itemName, amount) {
     try {
-			if (BountyData.PlayerData[victimID].isTarget) {
-				BountyData.PlayerData[victimID].isTarget = false;
-	      BountyData.PlayerData[victimID].timer.Destroy();
-				modifier = BountyData.TimerData[victimID].modifier || 1;
-	    }
+      if (BountyData.PlayerData[victimID].isTarget) {
+        BountyData.PlayerData[victimID].isTarget = false;
+        BountyData.PlayerData[victimID].timer.Destroy();
+      }
 
       itemName = itemName.toLowerCase();
       if (itemName === this.Config.Settings.currency) {
         var econData = econAPI.Call("GetUserDataFromPlayer", player);
-        econData.Call("Deposit", amount * modifier);
-      }
+        econData.Call("Deposit", amount);
+      } else if (itemName !== this.Config.Settings.currency) {
       var definition = global.ItemManager.FindItemDefinition(itemName);
       if (definition === null) return print("Unable to Find an Item for Bounty.");
-      player.inventory.GiveItem(global.ItemManager.CreateByItemID(Number(definition.itemid), Number(amount) * modifier, false), player.inventory.containerMain);
-    } catch (e) {
+      print("Giving Item: " + definition.itemid);
+      player.inventory.GiveItem(global.ItemManager.CreateByItemID(Number(definition.itemid), Number(amount), false), player.inventory.containerMain);
+    }
+  } catch (e) {
       print(e.message.toString());
     }
-		this.saveData();
+    this.saveData();
 
   },
 
