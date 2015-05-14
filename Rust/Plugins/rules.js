@@ -19,7 +19,7 @@ var rules = {
             "AddBadSyntax": ['Incorrect Syntax, please use: /rules add "rule here" Example: /rules add "Example Rule Here"'],
             "DelBadSyntax": ["Incorrect Syntax, please use:", "/rules del ruleNumber", "Example: /rules del 1"],
             "Default": ["No Permissions to use this command."]
-        }
+        };
     },
 
     /*-----------------------------------------------------------------
@@ -61,7 +61,7 @@ var rules = {
 
             if (authLvl >= 2 && args[1].length) {
                 rules.push(rulLen + "." + " " + args[1]);
-                rust.SendChatMessage(player, "RULES", "Rule added successfully.", "0")
+                rust.SendChatMessage(player, "RULES", "Rule added successfully.", "0");
                 this.SaveConfig();
             } else if (authLvl <= 1) {
                 rust.SendChatMessage(player, "RULES", "No Permissions to use this command.", "0");
