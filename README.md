@@ -1,13 +1,9 @@
-# OxidePlugins by KillParadise
-Welcome to my plugins GitHub! Before you download you should know:
->All my plugins are written via JavaScript
-I just like it that way.
+# OxidePlugins by KillParadise (Unstable Branch)
+Welcome to the unstable branch! 
+#####Warning: These are UNSTABLE for a reason! They are untested! Or contain new code, new styles, new anything! Use at your own risk!
 
-I am hoping to move to python as well so both python and js will be on my plugins. Thank you for stopping by! and I love to hear comments or suggestions on my plugins. So please share your thoughts. 
-
-##Current Plans
-
-Currently I want to make a series of plugins to interact and work well together such as bountyboard and transit systems. Maybe even a RPG support API in the future. my main projects are BountyBoard, and Ranks plugins. But I tend to bounce around a bit here and there. Hoping to have more plugins in the near future. 
+##Current Policy
+All Plugins are free to use and you can use them in your servers at your pleasure. All plugins are editable, and you can use them as examples in any of your own plugins. I just ask for a slight bit of credit if you do! Thanks!
 
 ##Looking for help or to learn
 
