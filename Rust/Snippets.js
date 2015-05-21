@@ -11,6 +11,7 @@ snippets.prototype = {
      * @param    {String/Array}          string [String or Array of Strings which contain replaceable values]
      * @param    {Array}          values [Array of values to replace in the string(s) MUST be in order]
      * @return   {String}                 [Returns the newly Built String]
+     * @example this.buildString("{player} went skipping to the {location} with {player2}", [playerName, locationName, playerName2]);
      */
     buildString: function(string, values) {
         var temp = [],
@@ -51,6 +52,7 @@ snippets.prototype = {
      * @memberOf Snippets
      * @param    {String}          playerName [Name for the desired player]
      * @return   {Array}                     [Array containing the found player Object AND steamID]
+     * @example this.findPlayerByName("KillParadise");
      */
     findPlayerByName: function(playerName) {
         var found = [],
@@ -89,6 +91,7 @@ snippets.prototype = {
      * @param    {Integer}          closestTo [The Number to search the array for to find closest]
      * @param    {Array}          arr       [Array containing values to search (optional)]
      * @return   {Integer}                    [Found Closest value]
+     * @example this.getClosest(5, [1, 4, 7, 9]);
      */
     getClosest: function(closestTo, arr) {
         arr = [] //if arr is not sent build an array here
@@ -151,6 +154,7 @@ snippets.prototype = {
      * @param    {Object}          player [The Rust Base Player Object]
      * @param    {String}          perm   [String of the desired perm to check]
      * @return   {Boolean}                [Boolean if the user has permission or not]
+     * @example this.hasPermission("KillParadise", "canBan");
      */
     hasPermission: function(player, perm) {
         var steamID = rust.UserIDFromPlayer(player);
@@ -170,6 +174,7 @@ snippets.prototype = {
      * @method   updateKDR
      * @memberOf Snippets
      * @param    {Array}          ids [Array of ids to be sent to the function]
+     * @example this.updateKDR([id1, id2]);
      */
     updateKDR: function(ids) {
         var len = ids.length,
@@ -194,10 +199,29 @@ snippets.prototype = {
      * @param    {Object}          player  [The Rust Base Player Object]
      * @param    {String}          steamID [Steam ID of the chosen player (not the same as the base player)]
      * @param    {String}          group   [Permission Group Name to add player too]
+     * @example this.setPermGroup(player, "id", "Admin");
      */
     setPermGroup: function(player, steamID, group) {
         if (permission.GroupExists(group)) {
             permission.AddUserGroup(steamID, group);
+        } else {
+            player.ChatMessage("This group does not exist.");
+        }
+        return false;
+    },
+
+    /**
+     * Handles removing user from a permissions group
+     * @method   remPermGroup
+     * @memberOf Snippets
+     * @param    {Object}          player  [The Rust Base Player Object]
+     * @param    {String}          steamID [Steam ID of the chosen player (not the same as the base player)]
+     * @param    {String}          group   [Permission Group Name to add player too]
+     * @example this.remPermGroup(player, "id", "Admin");
+     */
+    remPermGroup: function(player, steamID, group) {
+        if (permission.GroupExists(group)) {
+            permission.RemoveUserGroup(steamID, group);
         } else {
             player.ChatMessage("This group does not exist.");
         }
