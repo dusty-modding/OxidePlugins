@@ -1,8 +1,5 @@
-function Snippets() {
-    var snippets = new Snippets();
-};
 
-snippets.prototype = {
+var Snippets = {
 
     /**
      * Used to build proper strings with replaced values searches for words in {} tags
