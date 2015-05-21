@@ -1,119 +1,118 @@
-var UniAPI = {
-        Title: "Universal Economics",
-        Author: "Killparadise",
-        Version: V(1, 0, 0),
-        Init: function() {
-            global = importNamespace("");
-            this.getData();
+UniAPI.API = function() {
+    this.Status = "Active";
+}
 
-            command.AddChatCommand("uni", this.Plugin, "uniEconSwitch");
-            command.AddConsoleCommand("uni.eco", this.Plugin, "C_Eco");
-            msgs = this.Config.Messages;
-            prefix = this.Config.Prefix;
-        },
+UniAPI.API.prototype = {
 
-        OnServerInitialized: function() {
-            print(this.Title + " is booting up... Welcome aboard.");
-            if (this.Config.firstBootup) {
-                print("Running First Boot, getting current player list...");
-                var list = global.BasePlayer.activePlayerList.GetEnumerator();
-                while (list.MoveNext()) {
-                    this.loadData(list.Current);
-                }
-                this.Config.firstBootup = false;
-                this.SaveConfig();
-                print("Done building getting list. Data Built.");
-            }
-        },
+    getPlayerBal: function(steamID) {
+        if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+        return UniAPI.PlayerData[steamID].Account;
+    },
 
-        OnPlayerInit: function(player) {
-            this.loadData(player);
-        },
+    getPlayerWallet: function(steamID) {
+        if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+        return UniAPI.PlayerData[steamID].Wallet;
+    },
 
-        registerPermissions: function() {
-            for (var perm in this.Config.Permissions) {
-                if (!permission.PermissionExists(this.Config.Permissions[perm])) {
-                    permission.RegisterPermission(this.Config.Permissions[perm], this.Plugin);
-                }
-            }
-        },
+    setPlayerBal: function(steamID, amt) {
+        if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+        UniAPI.PlayerData[steamID].Account = amt;
+        return this.saveData();
+    },
 
-        hasPermission: function(player, perm) {
-            var steamID = rust.UserIDFromPlayer(player);
-            if (player.net.connection.authLevel === 2) {
-                return true;
-            }
+    depToPlayer: function(steamID, amt) {
+        if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+        UniAPI.PlayerData[steamID].Account + amt;
+        return this.saveData();
+    },
 
-            if (permission.UserHasPermission(steamID, perm)) {
-                return true;
-            }
-            rust.SendChatMessage(player, prefix, msgs.noPerms, "0");
-            return false;
-        },
+    withFromPlayer: function(steamID, amt) {
+        if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+        UniAPI.PlayerData[steamID].Account - amt;
+        return this.saveData();
+    },
 
-        /*--------------------------------------------
-                    Start API setup
-        ----------------------------------------------*/
-        getPlayerBal: function(steamID) {
-            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
-            return UniAPI.PlayerData[steamID].Account;
-        },
+    transferFunds: function(senderID, recieverID, amt) {
 
-        getPlayerWallet: function(steamID) {
-            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
-            return UniAPI.PlayerData[steamID].Wallet;
-        },
-
-        setPlayerBal: function(steamID, amt) {
-            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
-            UniAPI.PlayerData[steamID].Account = amt;
-            this.saveData();
-        },
-
-        depToPlayer: function(steamID, amt) {
-            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
-            UniAPI.PlayerData[steamID].Account + amt;
-            this.saveData();
-        },
-
-        withFromPlayer: function(steamID, amt) {
-            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
-            UniAPI.PlayerData[steamID].Account - amt;
-            this.saveData();
-        },
-
-        transferFunds: function(senderID, recieverID, amt) {
-
-            if (this.Config.fees) {
-                var diff = amt * this.Config.fees;
-                amt = amt - diff;
-            }
-
-            if (typeof(UniAPI.PlayerData[senderID]) === "undefined" || typeof(UniAPI.PlayerData[recieverID]) === "undefined") {
-                this.loadData(senderID);
-                this.loadData(recieverID);
-            }
-
-            if (UniAPI.PlayerData[senderID].Account >= amt) {
-                UniAPI.PlayerData[senderID].Account -= amt;
-                UniAPI.PlayerData[recieverID].Account += amt;
-            }
-            this.saveData();
+        if (this.Config.fees) {
+            var diff = amt * this.Config.fees;
+            amt = amt - diff;
         }
+
+        if (typeof(UniAPI.PlayerData[senderID]) === "undefined" || typeof(UniAPI.PlayerData[recieverID]) === "undefined") {
+            this.loadData(senderID);
+            this.loadData(recieverID);
+        }
+
+        if (UniAPI.PlayerData[senderID].Account >= amt) {
+            UniAPI.PlayerData[senderID].Account -= amt;
+            UniAPI.PlayerData[recieverID].Account += amt;
+        }
+        return this.saveData();
     },
 
     testAPI: function(test) {
         if (test) {
-            return print("API hit successfully");
-        } else {
-            return print("API hit, but param failed");
+            return print(this.Status);
+        }
+        return false;
+    }
+}
+
+
+var UniAPI = {
+    Title: "Universal Economics",
+    Author: "Killparadise",
+    Version: V(1, 0, 0),
+    Init: function() {
+        global = importNamespace("");
+        this.getData();
+
+        API = new API();
+        command.AddChatCommand("uni", this.Plugin, "uniEconSwitch");
+        command.AddConsoleCommand("uni.eco", this.Plugin, "C_Eco");
+        msgs = this.Config.Messages;
+        prefix = this.Config.Prefix;
+    },
+
+    OnServerInitialized: function() {
+        print(this.Title + " is booting up... Welcome aboard.");
+        if (this.Config.firstBootup) {
+            print("Running First Boot, getting current player list...");
+            var list = global.BasePlayer.activePlayerList.GetEnumerator();
+            while (list.MoveNext()) {
+                this.loadData(list.Current);
+            }
+            this.Config.firstBootup = false;
+            this.SaveConfig();
+            print("Done building getting list. Data Built.");
         }
     },
 
+    OnPlayerInit: function(player) {
+        this.loadData(player);
+    },
 
-    /*--------------------------------------------
-                    End API
-    ----------------------------------------------*/
+    registerPermissions: function() {
+        for (var perm in this.Config.Permissions) {
+            if (!permission.PermissionExists(this.Config.Permissions[perm])) {
+                permission.RegisterPermission(this.Config.Permissions[perm], this.Plugin);
+            }
+        }
+    },
+
+    hasPermission: function(player, perm) {
+        var steamID = rust.UserIDFromPlayer(player);
+        if (player.net.connection.authLevel === 2) {
+            return true;
+        }
+
+        if (permission.UserHasPermission(steamID, perm)) {
+            return true;
+        }
+        rust.SendChatMessage(player, prefix, msgs.noPerms, "0");
+        return false;
+    },
 
     LoadDefaultConfig: function() {
         this.Config.firstBootup = true;
