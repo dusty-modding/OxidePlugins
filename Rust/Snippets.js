@@ -394,6 +394,7 @@ var Snippets = {
      */
     smartUpdateConfig: function() {
         var counter = 0;
+        var step, steps = [];
         if (this.Config.Version !== "1.0.0") {
             print("Updating Config to v1.0.0");
             this.Config.Version = "1.0.0";
@@ -405,7 +406,7 @@ var Snippets = {
             counter++;
             print("Adding New String to Test...");
             print("---------------------------------------")
-            print("Config Successfully Updated to v1.6.4");
+            print("Config Successfully Updated to v1.0.0");
 
             print("Number of changes: " + counter);
         } else {
@@ -413,5 +414,5 @@ var Snippets = {
             return false;
         }
         this.SaveConfig();
-    }
+    },
 }
