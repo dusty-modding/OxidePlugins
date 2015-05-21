@@ -1,119 +1,105 @@
 var UniAPI = {
-    Title: "Universal Economics",
-    Author: "Killparadise",
-    Version: V(1, 0, 0),
-    HasConfig: true,
-    Init: function() {
-        global = importNamespace("");
-        this.getData();
+        Title: "Universal Economics",
+        Author: "Killparadise",
+        Version: V(1, 0, 0),
+        Init: function() {
+            global = importNamespace("");
+            this.getData();
 
-        UniAPI.fees = this.Config.Settings.fees || 0.05;
-        command.AddChatCommand("uni", this.Plugin, "uniEconSwitch");
+            command.AddChatCommand("uni", this.Plugin, "uniEconSwitch");
+            command.AddConsoleCommand("uni.eco", this.Plugin, "C_Eco");
+            msgs = this.Config.Messages;
+            prefix = this.Config.Prefix;
+        },
 
-        command.AddConsoleCommand("uni.eco", this.Plugin, "C_Eco");
-        msgs = this.Config.Messages;
-    },
-
-    OnServerInitialized: function() {
-        print(this.Title + " is booting up... Welcome aboard.");
-    },
-
-    OnPlayerInit: function(player) {
-        this.loadData(player);
-    },
-
-    /*--------------------------------------------
-                Start API setup
-    ----------------------------------------------*/
-    getPlayerBal: function(steamID, player) {
-        if (steamID !== null) {
-            balance = UniAPI.PlayerData[steamID].Account;
-        } else {
-            var steamID = rust.UserIDFromPlayer(player);
-            balance = UniAPI.PlayerData[steamID].Account;
-        }
-        return balance;
-    },
-
-    setPlayerBal: function(steamID, amt) {
-        UniAPI.PlayerData[steamID].Account = amt;
-        this.saveData();
-        rust.SendChatMessage(player, "UniEcon", msgs.setCmpl, "0");
-    },
-
-    depToPlayer: function(steamID, player, amt) {
-        if (steamID !== null) {
-            var getPlayer = this.findPlayerByName(steamID);
-            getDeposit = this.deposit(getPlayer[0], null, amt);
-        } else if (player !== null && steamID === null) {
-            var steamID = rust.UserIDFromPlayer(player);
-            var getPlayer = this.findPlayerByName(steamID);
-            getDeposit = this.deposit(getPlayer[0], null, amt);
-        } else {
-            rust.SendChatMessage(player, "UniEcon", msgs.noArgs, "0");
-        }
-
-        if (getDeposit) {
-            rust.SendChatMessage(player, "UniEcon", msgs.customSuccessDep, "0");
-        } else {
-            rust.SendChatMessage(player, "UniEcon", msgs.customFailedDep, "0");
-        }
-        this.saveData();
-    },
-
-    withFromPlayer: function(steamID, player, amt) {
-        if (steamID !== null) {
-            var getPlayer = this.findPlayerByName(steamID);
-            getDeposit = this.withdrawl(getPlayer[0], null, amt);
-        } else if (player !== null && steamID === null) {
-            var steamID = rust.UserIDFromPlayer(player);
-            var getPlayer = this.findPlayerByName(steamID);
-            getDeposit = this.withdrawl(getPlayer[0], null, amt);
-        } else {
-            rust.SendChatMessage(player, "UniEcon", msgs.noArgs, "0");
-        }
-
-        if (getDeposit) {
-            rust.SendChatMessage(player, "UniEcon", msgs.customSuccessWithDrawl, "0");
-        } else {
-            rust.SendChatMessage(player, "UniEcon", msgs.customFailedWithDrawl, "0");
-        }
-        this.saveData();
-    },
-
-    transferFunds: function(senderID, recieverID, sender, receiver, amt) {
-        if (steamID !== null && steamID2 !== null) {
-            sender = this.findPlayerByName(senderID);
-            receiver = this.findPlayerByName(recieverID);
-        } else if (player !== null && player2 !== null) {
-            senderID = rust.UserIDFromPlayer(sender);
-            recieverID = rust.UserIDFromPlayer(receiver);
-        }
-
-        if (this.Config.fees) {
-            var diff = amt * this.Config.fees;
-            amt = amt - diff;
-        }
-
-        if ((UniAPI.PlayerData[sender[1]] !== undefined && UniAPI.PlayerData[receiver[1]] !== undefined)) {
-            if (UniAPI.PlayerData[sender[1]].Account >= amt) {
-                UniAPI.PlayerData[sender[1]].Account -= amt;
-                UniAPI.PlayerData[receiver[1]].Account += amt;
-                rust.SendChatMessage(sender[0], "UniEcon", msgs.transGood, "0");
-                rust.SendChatMessage(receiver[0], "UniEcon", msgs.transGood, "0");
+        OnServerInitialized: function() {
+            print(this.Title + " is booting up... Welcome aboard.");
+            if (this.Config.firstBootup) {
+                print("Running First Boot, getting current player list...");
+                var list = global.BasePlayer.activePlayerList.GetEnumerator();
+                while (list.MoveNext()) {
+                    this.loadData(list.Current);
+                }
+                this.Config.firstBootup = false;
+                this.SaveConfig();
+                print("Done building getting list. Data Built.");
             }
-        } else if (UniAPI.PlayerData[senderID] !== undefined && UniAPI.PlayerData[senderID] !== undefined) {
+        },
+
+        OnPlayerInit: function(player) {
+            this.loadData(player);
+        },
+
+        registerPermissions: function() {
+            for (var perm in this.Config.Permissions) {
+                if (!permission.PermissionExists(this.Config.Permissions[perm])) {
+                    permission.RegisterPermission(this.Config.Permissions[perm], this.Plugin);
+                }
+            }
+        },
+
+        hasPermission: function(player, perm) {
+            var steamID = rust.UserIDFromPlayer(player);
+            if (player.net.connection.authLevel === 2) {
+                return true;
+            }
+
+            if (permission.UserHasPermission(steamID, perm)) {
+                return true;
+            }
+            rust.SendChatMessage(player, prefix, msgs.noPerms, "0");
+            return false;
+        },
+
+        /*--------------------------------------------
+                    Start API setup
+        ----------------------------------------------*/
+        getPlayerBal: function(steamID) {
+            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+            return UniAPI.PlayerData[steamID].Account;
+        },
+
+        getPlayerWallet: function(steamID) {
+            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+            return UniAPI.PlayerData[steamID].Wallet;
+        },
+
+        setPlayerBal: function(steamID, amt) {
+            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+            UniAPI.PlayerData[steamID].Account = amt;
+            this.saveData();
+        },
+
+        depToPlayer: function(steamID, amt) {
+            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+            UniAPI.PlayerData[steamID].Account + amt;
+            this.saveData();
+        },
+
+        withFromPlayer: function(steamID, amt) {
+            if (typeof(UniAPI.PlayerData[steamID]) === "undefined") this.loadData(steamID);
+            UniAPI.PlayerData[steamID].Account - amt;
+            this.saveData();
+        },
+
+        transferFunds: function(senderID, recieverID, amt) {
+
+            if (this.Config.fees) {
+                var diff = amt * this.Config.fees;
+                amt = amt - diff;
+            }
+
+            if (typeof(UniAPI.PlayerData[senderID]) === "undefined" || typeof(UniAPI.PlayerData[recieverID]) === "undefined") {
+                this.loadData(senderID);
+                this.loadData(recieverID);
+            }
+
             if (UniAPI.PlayerData[senderID].Account >= amt) {
                 UniAPI.PlayerData[senderID].Account -= amt;
-                UniAPI.PlayerData[receiverID].Account += amt;
-                rust.SendChatMessage(sender, "UniEcon", msgs.transGood, "0");
-                rust.SendChatMessage(receiver, "UniEcon", msgs.transGood, "0");
+                UniAPI.PlayerData[recieverID].Account += amt;
             }
-        } else {
-            this.loadData(sender[0]);
-            this.loadData(receiver[0]);
+            this.saveData();
         }
-        this.saveData();
     },
 
     testAPI: function(test) {
@@ -130,31 +116,42 @@ var UniAPI = {
     ----------------------------------------------*/
 
     LoadDefaultConfig: function() {
+        this.Config.firstBootup = true;
         this.Config.Settings = {
             "starterBalance": 500,
-            "authLvl": 2,
             "fees": 0.05,
             "currency": "$",
-            "currencyName": "Dollar"
+            "currencyName": "Dollar",
+            "lossWhenKilled": true,
+            "lossOnKilledByAnimal": 0.20,
+            "lossOnKilledByPlayer": 0.35,
+            "timerOnDeposit": true,
+            "timerLength": 120
         };
+
+        this.Config.Prefix = "UniEconomics";
 
         this.Config.Messages = {
             "bal": "Your current balance is: ",
+            "wal": "Your current Wallet balance is: ",
             "transGood": "Transferred Funds Successfully",
             "setGood": "Added funds Successfully.",
             "setBad": "Failed to set player funds.",
-            "deposit": "Deposited funds successfully.",
-            "withdrawl": "Withdrew funds successfully.",
+            "deposit": "Deposited {result}.",
+            "withdrawl": "Withdraw {result}",
             "noFunds": "Not Enough funds...",
             "noArgs": "Incorrect Args sent...",
-            "setCmpl": "Set players funds successfully"
+            "setCmpl": "Set players funds successfully",
+            "adminFunds": "{cmd} Funds successfully.",
+            "plsWait": "Depositing Fund, Please wait...",
+            "loss": "<color=red>You were killed and lost {amount}</color>",
+            "gain": "<color=green>You've picked {amount} from the body.</color>"
         };
 
-        this.Config.CustomMsgs = {
-            "customSuccessDep": "",
-            "customFailedDep": "",
-            "customSuccessWithDrawl": "",
-            "customFailedWithDrawl": ""
+        this.Config.Permissions = {
+            "set": "canSet",
+            "add": "canAddFunds",
+            "rem": "canRemFunds"
         }
     },
 
@@ -166,10 +163,10 @@ var UniAPI = {
 
     loadData: function(player) {
         var steamID = rust.UserIDFromPlayer(player);
-        var authLvl = player.net.connection.authLevel;
         UniAPI.PlayerData[steamID] = UniAPI.PlayerData[steamID] || {};
         UniAPI.PlayerData[steamID].Name = UniAPI.PlayerData[steamID].Name || player.displayName;
         UniAPI.PlayerData[steamID].Account = UniAPI.PlayerData[steamID].Account || this.Config.Settings.starterBalance;
+        UniAPI.PlayerData[steamID].Wallet = UniAPI.PlayerData[steamID].Wallet || 0;
         this.saveData();
     },
 
@@ -178,9 +175,8 @@ var UniAPI = {
     },
 
     uniEconSwitch: function(player, cmds, args) {
-        var authLvl = player.net.connection.authLevel;
         var steamID = rust.UserIDFromPlayer(player);
-
+        if (permission.PermissionExists(this.Config.Permissions[args[0]])) var allowed = this.hasPermission(player, this.Config.Permissions[args[0]]);
         switch (args[0]) {
             case "with":
                 this.withdrawl(player, cmds, args);
@@ -189,51 +185,21 @@ var UniAPI = {
                 this.deposit(player, cmds, args);
                 break;
             case "set":
-                this.setBal(player, cmds, args);
+                if (allowed) this.setBal(player, cmds, args);
                 break;
             case "tran":
                 this.transfer(player, cmds, args);
                 break;
-            default:
-                rust.SendChatMessage(player, "UniEcon", msgs.bal + this.Config.Settings.currency + UniAPI.PlayerData[steamID].Account, "0");
+            case "add":
+                if (allowed) this.addFunds(player, cmds, args);
                 break;
-        }
-    }
-
-    //This is so we can find a player if a name is entered as a string. We can get a player object back
-        findPlayerByName: function(player, args) {
-        try {
-            var global = importNamespace("");
-            var found = [],
-                matches = [];
-            var playerName = args[1].toLowerCase();
-            var itPlayerList = global.BasePlayer.activePlayerList.GetEnumerator();
-            while (itPlayerList.MoveNext()) {
-
-                var displayName = itPlayerList.Current.displayName.toLowerCase();
-
-                if (displayName.search(playerName) > -1) {
-                    print("found match " + displayName);
-                    found.push(itPlayerList.Current);
-                }
-
-                if (playerName.length === 17) {
-                    if (rust.UserIDFromPlayer(displayName).search(playerName)) {
-                        found.push(itPlayerList.Current);
-                    }
-                }
-            }
-
-            if (found.length) {
-                foundID = rust.UserIDFromPlayer(found[0]);
-                found.push(foundID);
-                return found;
-            } else {
-                rust.SendChatMessage(player, prefix.uniAPI, msgs.NoPlyrs, "0");
-                return false;
-            }
-        } catch (e) {
-            print(e.message.toString());
+            case "rem":
+                if (allowed) this.remFunds(player, cmds, args);
+                break;
+            default:
+                rust.SendChatMessage(player, "UniEcon", msgs.bal + "<color=green>" + this.Config.Settings.currency + UniAPI.PlayerData[steamID].Account + "</color>", "0");
+                rust.SendChatMessage(player, "UniEcon", msgs.wal + "<color=green>" + this.Config.Settings.currency + UniAPI.PlayerData[steamID].Account + "</color>", "0");
+                break;
         }
     },
 
@@ -248,14 +214,66 @@ var UniAPI = {
                 break;
             case "balance":
                 var getplayer = arg.GetString(1, "");
-                var target = this.findPlayerByName(getPlayer);
-                var getPData = [UniAPI.PlayerData[target[1]].Name, UniAPI.PlayerData[target[1]].Account];
-                print("Player: " + getPData[0] + " balance: " + getPData[1]);
+                var target = this.findPlayer(getPlayer);
+                print("Player: " + UniAPI.PlayerData[target[1]].Name + "\nBalance: " + UniAPI.PlayerData[target[1]].Account + "\nWallet: " + UniAPI.PlayerData[target[1]].Wallet);
             case "set":
                 var getplayer = arg.GetString(1, "");
-                var target = this.findPlayerByName(getPlayer);
+                var target = this.findPlayer(getPlayer);
                 this.setBal(target[0], null, arg);
         }
+    },
+
+    findPlayer: function(playerName) {
+        var found = [],
+            foundID;
+        playerName = playerName.toLowerCase();
+        var itPlayerList = global.BasePlayer.activePlayerList.GetEnumerator();
+        while (itPlayerList.MoveNext()) {
+
+            var displayName = itPlayerList.Current.displayName.toLowerCase();
+
+            if (displayName.search(playerName) > -1) {
+                print("found match " + displayName);
+                found.push(itPlayerList.Current);
+            }
+
+            if (playerName.length === 17) {
+                if (rust.UserIDFromPlayer(displayName).search(playerName)) {
+                    found.push(itPlayerList.Current);
+                }
+            }
+        }
+
+        if (found.length) {
+            foundID = rust.UserIDFromPlayer(found[0]);
+            found.push(foundID);
+            return found;
+        } else {
+            return false;
+        }
+    },
+
+    OnEntityDeath: function(entity, hitinfo) {
+        var victim = entity,
+            attacker = hitinfo.Initiator;
+        if (!victim.ToPlayer() || victim === null) return false;
+        var victimID = rust.UserIDFromPlayer(victim),
+            if (attacket.ToPlayer() !== null) attackerID = rust.UserIDFromPlayer(attacker);
+
+        if (this.Config.Settings.lossWhenKilled) {
+            if (UniAPI.PlayerData[victimID].Account + 150 > this.Config.starterBalance && attackerID) {
+                var loss = UniAPI.PlayerData[victimID].Account * this.Config.Settings.lossOnKilledByPlayer;
+                UniAPI.PlayerData[victimID].Account -= loss;
+                victim.ChatMessage(msgs.loss.replace("{amount}", this.Config.Settings.currency + loss));
+                UniAPI.PlayerData[attackerID].Account += loss;
+                attacker.ChatMessage(msgs.gain.replace("{amount}", this.Config.Settings.currency + loss));
+            } else if (UniAPI.PlayerData[victimID].Account + 150 > this.Config.starterBalance && !attackerID && this.Config.Settings.lossOnKilledByAnimal > 0) {
+                var loss = UniAPI.PlayerData[victimID].Account * this.Config.Settings.lossOnKilledByAnimal;
+                UniAPI.PlayerData[victimID].Account -= loss;
+                victim.ChatMessage(msgs.loss.replace("{amount}", this.Config.Settings.currency + loss));
+            }
+        }
+        return false;
     },
 
     transfer: function(player, cmd, args) {
@@ -263,7 +281,7 @@ var UniAPI = {
         var steamID = rust.UserIDFromPlayer(player);
         var P1currBal = UniAPI.PlayerData[steamID].Account;
         if (args.length >= 2) {
-            var getPlayer = this.findPlayerByName(arg[1]);
+            var getPlayer = this.findPlayer(arg[1]);
             var P2currBal = UniAPI.PlayerData[getPlayer[1]].Account;
             var getAmount = Number(args[2]);
         } else {
@@ -290,32 +308,82 @@ var UniAPI = {
 
     deposit: function(player, cmd, args) {
         var steamID = rust.UserIDFromPlayer(player);
-        var currBal = UniAPI.PlayerData[steamID].Account;
-        if (args.length >= 1) {
-            var newBal = currBal + Number(args[1])
+        var currBal = UniAPI.PlayerData[steamID].Account,
+            amt = Number(args[1]);
+        if (args.length === 2 && UniAPI.PlayerData[steamID].Wallet >= amt) {
+            player.ChatMessage(msgs.plsWait);
+
+            if (this.Config.Settings.timerOnDeposit) {
+                timer.Once(this.Config.Settings.timerLength, function() {
+                    UniAPI.PlayerData[steamID].Account += amt;
+                    UniAPI.PlayerData[steamID].Wallet -= amt;
+                    rust.SendChatMessage(player, "UniEcon", msgs.deposit.replace("{result}", "Successful"), "0");
+                }, this.Plugin);
+            } else {
+                UniAPI.PlayerData[steamID].Account += amt;
+                UniAPI.PlayerData[steamID].Wallet -= amt;
+                rust.SendChatMessage(player, "UniEcon", msgs.deposit.replace("{result}", "Successful"), "0");
+            }
+        } else if (UniAPI.PlayerData[steamID].Wallet < amt) {
+            rust.SendChatMessage(player, "UniEcon", msgs.noFunds, "0");
+            return false;
+        } else {
+            rust.SendChatMessage(player, "UniEcon", msgs.deposit.replace("{result}", "Unsuccessful"), "1");
+            return false;
         }
         this.saveData();
-        return newBal;
     },
 
     withdrawl: function(player, cmd, args) {
         var steamID = rust.UserIDFromPlayer(player);
         var currBal = UniAPI.PlayerData[steamID].Account;
-        if (args.length >= 1 && currBal >= Number(args[1])) {
-            var newBal = currBal - Number(args[1])
-        } else {
+        var amt = Number(args[1]);
+        if (args.length === 2 && currBal >= Number(args[1])) {
+            UniAPI.PlayerData[steamID].Wallet += amt;
+            UniAPI.PlayerData[steamID].Account -= amt;
+            rust.SendChatMessage(player, "UniEcon", msgs.withdraw.replace("{result}", "Successful"), "0");
+        } else if (currBal < Number(args[1])) {
             rust.SendChatMessage(player, "UniEcon", msgs.noFunds, "0");
+        } else {
+            rust.SendChatMessage(player, "UniEcon", msgs.withdraw.replace("{result}", "Unsuccessful"), "1");
         }
         this.saveData();
-        return newBal;
+        return false;
     },
 
     setBal: function(player, cmd, args) {
-        var steamID = rust.UserIDFromPlayer(player);
-        if (args.length === 1) {
-            UniAPI.PlayerData[steamID].Account = Number(args[1]);
-            rust.SendChatMessage(player, "UniEcon", msgs.setCmpl, "0");
+        if (args.length === 3) {
+            var getPlayer = this.findPlayer(args[1]);
+            var amt = Number(args[2]);
+            UniAPI.PlayerData[getPlayer[1]].Account = amt;
+            player.ChatMessage(msgs.adminFunds.replace("{cmd}", "Added"));
+        } else {
+            player.ChatMessage(msgs.noArgs);
         }
         this.saveData();
-    }
+    },
+
+    addFunds: function(player, cmd, args) {
+        if (args.length === 3) {
+            var getPlayer = this.findPlayer(args[1]);
+            var amt = Number(args[2]);
+            UniAPI.PlayerData[getPlayer[1]].Account += amt;
+            player.ChatMessage(msgs.adminFunds.replace("{cmd}", "Added"));
+        } else {
+            player.ChatMessage(msgs.noArgs);
+        }
+        this.saveData();
+    },
+
+    remFunds: function(player, cmd, args) {
+        if (args.length === 3) {
+            var getPlayer = this.findPlayer(args[1]);
+            var amt = Number(args[2]);
+            UniAPI.PlayerData[getPlayer[1]].Account -= amt;
+            player.ChatMessage(msgs.adminFunds.replace("{cmd}", "Removed"));
+        } else {
+            player.ChatMessage(msgs.noArgs);
+        }
+        this.saveData();
+    },
 }
