@@ -793,7 +793,7 @@ var RanksAndTitles = {
       attacker = hitinfo.Initiator,
       victimID,
       killerID;
-    if (!attacker.ToPlayer() || !victim.ToPlayer()) return false;
+    if ((attacker === null || !attacker.ToPlayer()) || !victim.ToPlayer()) return false;
     if (this.Config.Settings.antiSleeper && victim.IsSleeping()) return false;
     if (attacker.displayName !== victim.displayName) {
       var killer = attacker.ToPlayer();
