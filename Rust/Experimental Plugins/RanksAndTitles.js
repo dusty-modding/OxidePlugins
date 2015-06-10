@@ -101,8 +101,13 @@ RanksAndTitles.prototype = {
     },
 
     OnPlayerInit: function(player) {
-        var steamID = rust.UserIDFromPlayer(player);
-        this.dataHandler.checkPlayerData(player, steamID);
+        var userObj = "";
+        userObj = {
+            steamID: rust.UserIDFromPlayer(player),
+            player: player,
+            username: player.displayName
+        };
+        this.dataHandler.checkPlayerData(userObj);
     },
 
     OnPlayerChat: function(arg) {
@@ -474,25 +479,25 @@ RanksAndTitles.dataHandler.prototype = {
         TitlesData.AntiAbuse = TitlesData.AntiAbuse || {};
     },
 
-    checkPlayerData: function(player, steamID) {
-        var authLvl = player.net.connection.authLevel;
-        TitlesData.PlayerData[steamID] = TitlesData.PlayerData[steamID] || {};
-        TitlesData.PlayerData[steamID].PlayerID = TitlesData.PlayerData[steamID].PlayerID || steamID;
-        TitlesData.PlayerData[steamID].RealName = TitlesData.PlayerData[steamID].RealName || player.displayName;
-        TitlesData.PlayerData[steamID].Title = TitlesData.PlayerData[steamID].Title || "";
-        TitlesData.PlayerData[steamID].Prefix = TitlesData.PlayerData[steamID].Prefix || "";
-        TitlesData.PlayerData[steamID].Colors = TitlesData.PlayerData[steamID].Colors || {
+    checkPlayerData: function(user) {
+        var authLvl = user.player.net.connection.authLevel;
+        TitlesData.PlayerData[user.steamID] = TitlesData.PlayerData[user.steamID] || {};
+        TitlesData.PlayerData[user.steamID].PlayerID = TitlesData.PlayerData[user.steamID].PlayerID || user.steamID;
+        TitlesData.PlayerData[user.steamID].RealName = TitlesData.PlayerData[user.steamID].RealName || user.username;
+        TitlesData.PlayerData[user.steamID].Title = TitlesData.PlayerData[user.steamID].Title || "";
+        TitlesData.PlayerData[user.steamID].Prefix = TitlesData.PlayerData[user.steamID].Prefix || "";
+        TitlesData.PlayerData[user.steamID].Colors = TitlesData.PlayerData[user.steamID].Colors || {
             Prefix: "",
             Title: ""
         };
-        TitlesData.PlayerData[steamID].Rank = TitlesData.PlayerData[steamID].Rank || 0;
-        TitlesData.PlayerData[steamID].Kills = TitlesData.PlayerData[steamID].Kills || 0;
-        TitlesData.PlayerData[steamID].KDR = TitlesData.PlayerData[steamID].KDR || 0;
-        TitlesData.PlayerData[steamID].Deaths = TitlesData.PlayerData[steamID].Deaths || 0;
-        TitlesData.PlayerData[steamID].Karma = TitlesData.PlayerData[steamID].Karma || 0;
-        TitlesData.PlayerData[steamID].isAdmin = TitlesData.PlayerData[steamID].isAdmin || (authLvl >= 2) || this.hasPermission(player, this.Config.Permissions.staff) || false;
-        TitlesData.PlayerData[steamID].hidden = TitlesData.PlayerData[steamID].hidden || false;
-        this.setRankTitle(steamID, player);
+        TitlesData.PlayerData[user.steamID].Rank = TitlesData.PlayerData[user.steamID].Rank || 0;
+        TitlesData.PlayerData[user.steamID].Kills = TitlesData.PlayerData[user.steamID].Kills || 0;
+        TitlesData.PlayerData[user.steamID].KDR = TitlesData.PlayerData[user.steamID].KDR || 0;
+        TitlesData.PlayerData[user.steamID].Deaths = TitlesData.PlayerData[user.steamID].Deaths || 0;
+        TitlesData.PlayerData[user.steamID].Karma = TitlesData.PlayerData[user.steamID].Karma || 0;
+        TitlesData.PlayerData[user.steamID].isAdmin = TitlesData.PlayerData[user.steamID].isAdmin || (authLvl >= 2) || this.hasPermission(player, this.Config.Permissions.staff) || false;
+        TitlesData.PlayerData[user.steamID].hidden = TitlesData.PlayerData[user.steamID].hidden || false;
+        this.setRankTitle(user.steamID, user.player);
     }
 };
 
