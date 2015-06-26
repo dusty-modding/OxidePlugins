@@ -1,7 +1,7 @@
 var StaffStar = {
   Title: "Staff Star",
   Author: "Killparadise",
-  Version: V(1, 0, 0),
+  Version: V(1, 0, 1),
   Init: function() {
     this.registerPermissions();
     this.getData();
@@ -9,7 +9,13 @@ var StaffStar = {
   },
   OnPlayerInit: function(player) {
     var steamID = rust.UserIDFromPlayer(player);
-    this.checkStaff(player, steamID);
+    for (var i = 0; i < this.Config.Permissions.length; i++) {
+      if (this.hasPermission(player, this.Config.Permissions[i])) {
+        this.handleData(steamID);
+        StaffData.PlayerData[steamID].perm = this.Config.Permissions[i];
+      }
+    }
+    this.saveData();
   },
 
   OnServerInitialized: function() {
@@ -32,15 +38,14 @@ var StaffStar = {
   //          Data Handling
   //      All data handling systems
   //----------------------------------------
-  handleData: function(player, steamID) {
-    StaffData.PlayerData[steamID] = StaffData.PlayerData[steamID] || {};
-    StaffData.PlayerData[steamID].perm = StaffData.PlayerData[steamID].perm || "";
+  handleData: function(steamID) {
+    StaffData[steamID] = StaffData[steamID] || {};
+    StaffData[steamID].perm = StaffData[steamID].perm || "";
   },
 
   getData: function() {
     StaffData = data.GetData("StaffStar");
     StaffData = StaffData || {};
-    StaffData.PlayerData = StaffData.PlayerData || {};
   },
 
   saveData: function() {
@@ -67,26 +72,6 @@ var StaffStar = {
       }
     }
   },
-
-  checkStaff: function(player, steamID) {
-    for (var i = 0; i < this.Config.Permissions.length; i++) {
-      if (this.hasPermission(player, this.Config.Permissions[i])) {
-        i = Number.MAX_VALUE;
-        this.handleData();
-        StaffData.PlayerData[steamID].perm = this.Config.Permissions[i];
-      }
-    }
-    this.saveData();
-  },
-
-  checkPlayer: function(player) {
-    for (var i = 0; i < this.Config.Permissions.length; i++) {
-      if (permission.UserHasPermission(player, this.Config.Permissions[i])) {
-        return true;
-      }
-    }
-    return false;
-  },
   //----------------------------------------
   //     Chat Handler
   //    Grabs chat and modifies if needed
@@ -94,11 +79,9 @@ var StaffStar = {
   OnPlayerChat: function(arg) {
     var player = arg.connection.player,
       steamID = rust.UserIDFromPlayer(player),
-      msg = arg.GetString(0, "text");
-    var formattedMsg = msg;
-    if (!StaffData.PlayerData[steamID]) {
-      this.checkStaff(player, steamID);
-    }
+      msg = arg.GetString(0, "text"),
+      formattedMsg = msg;
+
     if (StaffData.PlayerData[steamID] && StaffData.PlayerData[steamID].perm) {
       formattedMsg = this.Config.values[StaffData.PlayerData[steamID].perm].symbol + '<color=' + this.Config.values[StaffData.PlayerData[steamID].perm].color + '>' + player.displayName + "</color>: " + msg;
       global.ConsoleSystem.Broadcast("chat.add", steamID, formattedMsg);
