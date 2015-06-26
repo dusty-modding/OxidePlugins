@@ -1,7 +1,7 @@
 var RanksAndTitles = {
   Title: "RanksAndTitles",
   Author: "Killparadise",
-  Version: V(1, 6, 4),
+  Version: V(1, 7, 0),
   ResourceId: 830,
   Init: function() {
     global = importNamespace("");
@@ -17,8 +17,38 @@ var RanksAndTitles = {
   },
 
   OnServerInitialized: function() {
+    this.moduleHandler();
     clansOn = plugins.Find('Clans');
     chatHandler = plugins.Find('chathandler');
+  },
+
+  moduleHandler: function() {
+    var modules = {};
+    modules = {
+      PrefixHandler: new PrefixHandler(this.Title, this.Author, V(1, 0, 0), [TitlesData, this.Config]),
+      PunishmentSystem: new PunishmentSystem(this.Title, this.Author, V(1, 0, 0), [TitlesData, this.Config]),
+      Achievements: new Achievements(this.Title, this.Author, V(1, 0, 0), [TitlesData, this.Config])
+    };
+    print("Modules");
+    print("----------------------------------");
+    if (modules.length) {
+      if (modules.PrefixHandler) {
+        print("[Modules]: Located Prefix Handler Module.");
+        print("[PrefixHandler]: Loaded Successfully");
+      }
+      if (modules.PunishmentSystem) {
+        print("[Modules]: Located Punishment Module.");
+        print("[Punishment]: Loaded Successfully");
+      }
+      if (modules.Achievements) {
+        print("[Modules]: Located Achievements Module.");
+        print("[Achievements]: Loaded Successfully");
+      }
+    } else {
+      print("[Modules]: No Modules Located");
+    }
+    print("----------------------------------");
+    this.SaveConfig();
   },
 
   /*-----------------------------------------------------
@@ -42,7 +72,6 @@ var RanksAndTitles = {
   grabPlayerPrefix: function(steamID) {
     return TitlesData.PlayerData[steamID].Prefix;
   },
-
   /*-----------------------------------------------------
                     END API
     -----------------------------------------------------*/
@@ -50,13 +79,17 @@ var RanksAndTitles = {
   /*-----------------------------------------------------------------
           updateConfig
           -- Smart update for config built each time
+          -- by hand by me.
    ------------------------------------------------------------------*/
   updateConfig: function(player, cmd, args) {
     var counter = 0;
 
     if (this.Config.Version !== "1.6.5") {
-      print("WARNING: Config is not 1.6.5 the plugin needs to rebuild the config or else you will have issues.");
-      print("Please backup your current config, and then delete it and reload RanksAndTitles");
+      this.Config.Version = "1.6.5";
+      delete this.Config.Settings;
+      delete this.Config.AdminHelp;
+      this.LoadDefaultConfig();
+      print("Successfully updated Plugin Settings");
     } else {
       print("Config already at latest version: v" + this.Config.Version);
       return false;
@@ -65,16 +98,17 @@ var RanksAndTitles = {
   },
 
   LoadDefaultConfig: function() {
-    this.Config.Version = this.Config.Version || "1.6.5";
+    this.Config.authLevel = 2;
+    this.Config.Version = this.Config.Version || "1.6.4";
     this.Config.Settings = this.Config.Settings || {
       "useKarma": true,
       "colorSupport": true,
       "noAdmin": false,
       "showPrefix": true,
-      "hideRank": false,
+      "AntiAbuseOn": true,
+      "dropRank": false,
       "antiSleeper": false,
-      "antiAbuseOn": true,
-      "useDeathMsgs": true,
+      "deathMsgs": true,
       "chatNameColor": "#1bd228",
       "staffchatNameColor": "#1bd228",
       "chatColor": "#FFFFFF"
@@ -133,7 +167,7 @@ var RanksAndTitles = {
       "clear": "canClear",
       "create": "canCreate",
       "delete": "canDelete",
-      "staff": "isStaff"
+      "staff": "isStaff",
     };
     this.Config.Prefix = this.Config.Prefix || "RanksAndTitles";
     this.Config.Messages = this.Config.Messages || {
@@ -186,15 +220,16 @@ var RanksAndTitles = {
 
       "<color=orange>/rt wipe playername</color> - Wipes the sleceted players Kills, Deaths, KDR, and Karma",
       "<color=orange>/rt set playername title</color> - Sets a custom title to the selected player, this must be a title in config (NOT RANK)",
-      "<color=orange>/rt remove playername</color> - removes a given players custom title, and sets them back into the ranks tree",
+      "<color=orange>/rt remove playername</color> - removes a given players custom title, and sets them back into the ransk tree",
       "<color=orange>/rt showprefix</color> - switch prefixes on and off",
       "<color=orange>/rt noadmin</color> - Removes admins (auth 2 or higher) from ranks system no kills, or ranks will be given.",
-      "<color=orange>/rt k set karma playername</color> - set a selected players karma level",
-      "<color=orange>/rt k add karma playername</color> - adds the entered amount of karma to the selected player",
-      "<color=orange>/rt k rem karma playername</color> - removes the entered amount of karma from the selected player",
+      "<color=orange>/rt k set amt playername</color> - set a selected players karma level",
+      "<color=orange>/rt k playername</color> - check the selected players karma",
+      "<color=orange>/rt k add amt playername</color> - adds the entered amount of karma to the selected player",
+      "<color=orange>/rt k rem amt playername</color> - removes the entered amount of karma from the selected player",
       "<color=orange>/rt create rankname rank karmaneeded killsneeded karmagiven color permissions</color> - create a new rank",
       "<color=orange>/rt create prefixname color permission</color> - create a new prefix",
-      "<color=orange>/rt delete rankname/prefix</color> - delete a rank or prefix"
+      "<color=orange>/rt delete rankname</color> - delete a rank"
     ];
 
   },
@@ -246,7 +281,6 @@ var RanksAndTitles = {
   OnPlayerInit: function(player) {
     var steamID = rust.UserIDFromPlayer(player);
     this.checkPlayerData(player, steamID);
-    this.handleStats([steamID], [player]);
   },
 
   /*-----------------------------------------------------------------
@@ -321,6 +355,8 @@ var RanksAndTitles = {
     TitlesData.PlayerData[steamID].Deaths = TitlesData.PlayerData[steamID].Deaths || 0;
     TitlesData.PlayerData[steamID].Karma = TitlesData.PlayerData[steamID].Karma || 0;
     TitlesData.PlayerData[steamID].isAdmin = TitlesData.PlayerData[steamID].isAdmin || (authLvl >= 2) || this.hasPermission(player, this.Config.Permissions.staff) || false;
+    TitlesData.PlayerData[steamID].hidden = TitlesData.PlayerData[steamID].hidden || false;
+    this.setRankTitle(steamID, player);
   },
 
   /*-----------------------------------------------------------------
@@ -329,7 +365,44 @@ var RanksAndTitles = {
           -- and setting proper values on login
    ------------------------------------------------------------------*/
   saveData: function() {
+    //Save our data to our titles data file
     data.SaveData('RanksandTitles');
+  },
+
+  /*-----------------------------------------------------------------
+          clearData
+          -- Wipes The entire data file and then rebuilds it
+          -- WARNING: CANNOT be undone
+          - @player - object - Base Player Object
+          - @cmd - Triggered Command
+          - @args - array - Cmd arguments
+   ------------------------------------------------------------------*/
+  clearData: function(player, cmd, args) {
+    delete TitlesData.PlayerData;
+    rust.SendChatMessage(player, prefix, msgs.clearData, "0");
+    TitlesData.PlayerData = TitlesData.PlayerData || {};
+    this.saveData();
+    this.getData();
+  },
+
+  /*-----------------------------------------------------------------
+          refreshData
+          -- Handles refreshing player data
+          -- sends them through ranking process again
+          - @player - object - Base Player Object
+          - @cmd - Triggered Command
+          - @args - array - Cmd arguments
+   ------------------------------------------------------------------*/
+  refreshData: function(player, cmd, args) {
+    var steamID = rust.UserIDFromPlayer(player);
+    if (TitlesData.PlayerData[steamID] === undefined) {
+      print("No Data found, Attempting to build Data");
+      rust.SendChatMessage(player, prefix, msgs.noData, "0");
+    } else {
+      rust.SendChatMessage(player, prefix, msgs.dataRfrsh, "0");
+    }
+    TitlesData.PlayerData[steamID].Title = "";
+    this.checkPlayerData(player, steamID);
   },
 
   /*-----------------------------------------------------------------
@@ -347,7 +420,7 @@ var RanksAndTitles = {
       var displayName = itPlayerList.Current.displayName.toLowerCase();
 
       if (displayName.search(playerName) > -1) {
-        print("Found: " + displayName);
+        print("found match " + displayName);
         found.push(itPlayerList.Current);
       }
 
@@ -388,7 +461,7 @@ var RanksAndTitles = {
         break;
       case "set":
         if (allowed && args.length === 3) {
-          this.givePrefix(player, cmd, args);
+          this.giveTitle(player, cmd, args);
         } else {
           rust.SendChatMessage(player, prefix, msgs.badSyntaxRt, "0");
           return false;
@@ -421,35 +494,13 @@ var RanksAndTitles = {
         }
         break;
       case "clear":
-        if (allowed) {
-          delete TitlesData.PlayerData;
-          rust.SendChatMessage(player, prefix, msgs.clearData, "0");
-          TitlesData.PlayerData = TitlesData.PlayerData || {};
-          this.saveData();
-          this.getData();
-        }
+        if (allowed) this.clearData(player, cmd, args);
         break;
       case "refresh":
-        if (!TitlesData.PlayerData[steamID]) {
-          print("No Data found, Attempting to build Data");
-          rust.SendChatMessage(player, prefix, msgs.noData, "0");
-        } else {
-          rust.SendChatMessage(player, prefix, msgs.dataRfrsh, "0");
-        }
-        TitlesData.PlayerData[steamID].Title = "";
-        this.checkPlayerData(player, steamID);
+        this.refreshData(player, cmd, args);
         break;
       case "noadmin":
-        if (allowed) {
-          if (noAdmin) {
-            this.Config.Settings.noAdmin = false;
-            rust.SendChatMessage(player, prefix, msgs.adminsOn, "0");
-          } else {
-            this.Config.Settings.noAdmin = true;
-            rust.SendChatMessage(player, prefix, msgs.adminsOff, "0");
-          }
-          this.SaveConfig();
-        }
+        if (allowed) this.noAdmin(player, cmd, args);
         break;
       case "help":
         this.rtHelp(player, cmd, args);
@@ -472,42 +523,6 @@ var RanksAndTitles = {
   },
 
   /*-----------------------------------------------------------------
-          karmaHandling
-          -- Handles karma command handling for karma commands
-          - @player - object - Base Player Object
-          - @cmd - Triggered Command
-          - @args - array - Cmd arguments
-   ------------------------------------------------------------------*/
-  karmaHandling: function(player, cmd, args) {
-    var perms = this.Config.Permissions;
-    var thisPerm = args[1];
-    if (args.length > 1) {
-      var getPlayer = this.findPlayerByName(args[3]);
-      var karmaAmt = Number(args[2]);
-    }
-    switch (args[1]) {
-      case "add":
-        TitlesData.PlayerData[getPlayer[1]].Karma += karmaAmt;
-        rust.SendChatMessage(player, prefix, msgs.addKarma, "0");
-        break;
-      case "set":
-        TitlesData.PlayerData[getPlayer[1]].Karma = karmaAmt;
-        rust.SendChatMessage(player, prefix, msgs.setKarma, "0");
-        break;
-      case "remove":
-        TitlesData.PlayerData[getPlayer[1]].Karma -= karmaAmt;
-        rust.SendChatMessage(player, prefix, msgs.removeKarma, "0");
-        break;
-      default:
-        getPlayer = this.findPlayerByName(args[1]);
-        rust.SendChatMessage(player, prefix, getPlayer[0].displayName + msgs.plyrKarma + TitlesData.PlayerData[getPlayer[1]].Karma, "0");
-        break;
-    }
-    this.saveData();
-    this.checkPlayerData(getPlayer[0], getPlayer[1]);
-  },
-
-  /*-----------------------------------------------------------------
           getClosest
           -- Locates closes rank to current players karma
           - @arr - Array - empty array to gather data
@@ -524,9 +539,6 @@ var RanksAndTitles = {
           if (arr[i] >= closestTo && arr[i] <= 0) closest = arr[i];
         }
       }
-    } else {
-      print("ERROR: Ranks Array is NULL or Empty.");
-      return false;
     }
     return closest;
   },
@@ -552,6 +564,94 @@ var RanksAndTitles = {
   },
 
   /*-----------------------------------------------------------------
+          setRankTitle
+          -- Finds and sets a players rank
+          -- based on kills or karma
+          - @playerID - Users Steam ID
+          - @player - Base player Object
+   ------------------------------------------------------------------*/
+  setRankTitle: function(playerID, player) {
+    if (TitlesData.PlayerData[playerID].isAdmin && this.Config.Settings.noAdmin) {
+      return false;
+    } else {
+      var i = 0,
+        j = this.Config.main.length,
+        oldRank = TitlesData.PlayerData[playerID].Rank;
+      for (i; i < j; i++) {
+        if (karmaOn && this.getClosest(TitlesData.PlayerData[playerID].Karma) === this.Config.main[i].karma) {
+          TitlesData.PlayerData[playerID].Title = this.Config.main[i].title;
+          TitlesData.PlayerData[playerID].Rank = this.Config.main[i].rank;
+        } else if (!karmaOn && this.getClosest(TitlesData.PlayerData[playerID].Kills) === this.Config.main[i].killsNeeded) {
+          TitlesData.PlayerData[playerID].Title = this.Config.main[i].title;
+          TitlesData.PlayerData[playerID].Rank = this.Config.main[i].rank;
+        }
+      }
+      for (var t = 0; t < this.Config.prefixTitles.length; t++) {
+        if (TitlesData.PlayerData[playerID].Prefix === "" && this.Config.prefixTitles[t].default) {
+          TitlesData.PlayerData[playerID].Prefix = this.Config.prefixTitles[t].title;
+        }
+      }
+
+      if (TitlesData.PlayerData[playerID].Rank > oldRank) {
+        player.ChatMessage("<color=green>" + msgs.Promoted + "</color> " + TitlesData.PlayerData[playerID].Title);
+        if (this.Config.Settings.broadcastPromotions) rust.BroadcastChat(this.buildString(msgs.broadcastpromo, [player.displayName, TitlesData.PlayerData[playerID].Title]));
+      } else if (TitlesData.PlayerData[playerID].Rank < oldRank) {
+        player.ChatMessage("<color=red>" + msgs.Demoted.replace("{rank}", TitlesData.PlayerData[playerID].Title) + "</color>");
+        if (this.Config.Settings.broadcastPromotions) rust.BroadcastChat(this.buildString(msgs.broadcastdemote, [player.displayName, TitlesData.PlayerData[playerID].Title]));
+      }
+    }
+  },
+
+  handleStats: function(killer, victim) {
+    var killerID = rust.UserIDFromPlayer(killer);
+    var victimID = rust.UserIDFromPlayer(victim);
+    if (this.Config.Settings.AntiAbuseOn && this.antiAbuse(victim, killer)) {
+      return false;
+    }
+    // Handle Data
+    if (!TitlesData.PlayerData[killerID]) {
+      this.checkPlayerData(killer, killerID);
+    } else if (!TitlesData.PlayerData[victimID] && victim.IsConnected()) {
+      this.checkPlayerData(victim, victimID);
+    }
+    // /Handle Data
+
+    if (this.Config.Settings.antiSleeper && victim.IsSleeping() && !TitlesData.PlayerData[victimID]) return false;
+
+    if (killer.displayName !== victim.displayName) {
+      var kGet = this.getKarma(victimID);
+      if (karmaOn && TitlesData.PlayerData[victimID].Karma >= 0) {
+        TitlesData.PlayerData[killerID].Karma -= kGet;
+        rust.SendChatMessage(killer, prefix.ranks, msgs.loseKarma + " (" + kGet + ")", "0");
+      } else if (karmaOn && TitlesData.PlayerData[victimID].Karma < 0) {
+        TitlesData.PlayerData[killerID].Karma += kGet;
+        rust.SendChatMessage(killer, prefix.ranks, msgs.gainKarma + " (" + kGet + ")", "0");
+      }
+      TitlesData.PlayerData[killerID].Kills += 1;
+      TitlesData.PlayerData[victimID].Deaths += 1;
+      if (this.Config.Settings.deathMsgs) this.buildDeathMsg([killer.displayName, victim.displayName], [killerID, victimID]);
+
+    } else if (victim.displayName === killer.displayName) {
+      TitlesData.PlayerData[victimID].Deaths += 1;
+    } else {
+      return false;
+    }
+    this.setRankTitle(killerID, killer);
+    var ids = [victimID, killerID];
+    var len = ids.length;
+    for (var i = 0; i < len; i++) {
+      k2d = TitlesData.PlayerData[ids[i]].Kills / TitlesData.PlayerData[ids[i]].Deaths;
+      k2d = Math.ceil(k2d * 100) / 100;
+      if (k2d !== "Infinity") {
+        TitlesData.PlayerData[ids[i]].KDR = k2d;
+      } else {
+        TitlesData.PlayerData[ids[i]].KDR = TitlesData.PlayerData[ids[i]].Kills;
+      }
+    }
+    this.saveData();
+  },
+
+  /*-----------------------------------------------------------------
           getKarma
           -- Grabs the victims title and locates the karmaModifier
           - @victimID - Victims Steam ID
@@ -572,97 +672,11 @@ var RanksAndTitles = {
   },
 
   /*-----------------------------------------------------------------
-          handleStats
-          -- Handles all stat adjustments and Rank changes updating
-          -- based on kills or karma
-          - @playerID - Array[] - Users Steam ID
-          - @player - Array[] - Base player Object
-   ------------------------------------------------------------------*/
-  handleStats: function(playerID, player) {
-    if (this.Config.Settings.antiAbuseOn && this.antiAbuse(player[1], player[0])) return false;
-    if ((TitlesData.PlayerData[playerID].isAdmin && noAdmin) || playerID.length === 0) {
-      return false;
-    } else {
-      var i = 0,
-        j = this.Config.main.length,
-        q = 0,
-        t = 0,
-        prefixLen = this.Config.prefixTitles.length,
-        k2d = 0,
-        len = playerID.length;
-      /***************** Kills & Deaths Handling **********************/
-      if (player[0].displayName !== player[1].displayName) {
-        TitlesData.PlayerData[playerID[0]].Kills += 1;
-        TitlesData.PlayerData[playerID[1]].Deaths += 1;
-        if (this.Config.Settings.useDeathMsgs) this.buildDeathMsg([player[0].displayName, player[0].displayName], playerID);
-      } else {
-        TitlesData.PlayerData[playerID[0]].Deaths += 1;
-      }
-      /***************** /Kills & Deaths Handling **********************/
-      /***************** Karma Handling **********************/
-      if (karmaOn) {
-        var kGet = this.getKarma(playerID[1]);
-        if (TitlesData.PlayerData[playerID[1]].Karma >= 0) {
-          TitlesData.PlayerData[playerID[0]].Karma -= kGet;
-          rust.SendChatMessage(player[0], prefix.ranks, msgs.loseKarma + " (" + kGet + ")", "0");
-        } else if (TitlesData.PlayerData[playerID[1]].Karma < 0) {
-          TitlesData.PlayerData[playerID[0]].Karma += kGet;
-          rust.SendChatMessage(player[0], prefix.ranks, msgs.gainKarma + " (" + kGet + ")", "0");
-        }
-      }
-      /***************** /Karma Handling **********************/
-      for (i; i < len; i++) {
-        var oldRank = TitlesData.PlayerData[playerID[i]].Rank;
-        var closestKarma = this.getClosest(TitlesData.PlayerData[playerID[i]].Karma),
-          closestKills = this.getClosest(TitlesData.PlayerData[playerID[i]].Kills);
-        /***************** KDR Handling **********************/
-        k2d = TitlesData.PlayerData[playerID[i]].Kills / TitlesData.PlayerData[playerID[i]].Deaths;
-        k2d = Math.ceil(k2d * 100) / 100;
-        if (k2d !== "Infinity") {
-          TitlesData.PlayerData[playerID[i]].KDR = k2d;
-        } else {
-          TitlesData.PlayerData[playerID[i]].KDR = TitlesData.PlayerData[playerID[i]].Kills;
-        }
-        /***************** /KDR Handling **********************/
-        /***************** Ranks Handling **********************/
-        for (q; q < j; q++) {
-          if (karmaOn) {
-            if (closestKarma === this.Config.main[q].karma) {
-              q = Number.MAX_VALUE;
-              TitlesData.PlayerData[playerID[i]].Title = this.Config.main[q].title;
-              TitlesData.PlayerData[playerID[i]].Rank = this.Config.main[q].rank;
-            }
-          } else {
-            if (closestKills === this.Config.main[q].killsNeeded) {
-              q = Number.MAX_VALUE;
-              TitlesData.PlayerData[playerID[i]].Title = this.Config.main[q].title;
-              TitlesData.PlayerData[playerID[i]].Rank = this.Config.main[q].rank;
-            }
-          }
-        }
-        /***************** /Ranks Handling **********************/
-        /***************** Prefix Handling **********************/
-        for (t; t < prefixLen; t++) {
-          if (TitlesData.PlayerData[playerID[i]].Prefix === "" && this.Config.prefixTitles[t].default) {
-            t = Number.MAX_VALUE;
-            TitlesData.PlayerData[playerID[i]].Prefix = this.Config.prefixTitles[t].title;
-          }
-        }
-        /***************** /Prefix Handling **********************/
-        /***************** Promo Handling **********************/
-        if (TitlesData.PlayerData[playerID[i]].Rank > oldRank) {
-          player.ChatMessage("<color=green>" + msgs.Promoted + "</color> " + TitlesData.PlayerData[playerID[i]].Title);
-        } else if (TitlesData.PlayerData[playerID[i]].Rank < oldRank) {
-          player.ChatMessage("<color=red>" + msgs.Demoted.replace("{rank}", TitlesData.PlayerData[playerID[i]].Title) + "</color>");
-        }
-        /***************** /Promo Handling **********************/
-      }
-    }
-    this.saveData();
-  },
+                    Anti-Abuse System
+  ------------------------------------------------------------------*/
 
   /*-----------------------------------------------------------------
-          antiAbuse
+          antiFriend
           -- Handles friends, and clan mate killings
           -- karma system
           - @victimID - Victims Steam ID
@@ -673,7 +687,7 @@ var RanksAndTitles = {
       attackerClan = clansOn.GetClanOf(attacker);
       victimClan = clansOn.GetClanOf(victim);
       if (attackerClan === victimClan) {
-        return this.clanCheck(attackerClan, attackerID, victimID);
+        return true;
       } else {
         return false;
       }
@@ -682,7 +696,6 @@ var RanksAndTitles = {
     }
     return false;
   },
-
   /*-----------------------------------------------------------------
           OnEntityDeath
           -- Called when a player is killed handles how
@@ -692,23 +705,9 @@ var RanksAndTitles = {
    ------------------------------------------------------------------*/
   OnEntityDeath: function(entity, hitinfo) {
     var victim = entity,
-      attacker = hitinfo.Initiator,
-      victimID,
-      killerID;
-    if (attacker === null || victim === null || !attacker.ToPlayer() || !victim.ToPlayer()) return false;
-    if (this.Config.Settings.antiSleeper && !victim.IsConnected() && !TitlesData.PlayerData[victimID]) return false;
-
-    var killer = attacker.ToPlayer();
-    killerID = rust.UserIDFromPlayer(killer);
-    victimID = rust.UserIDFromPlayer(victim);
-    if (!TitlesData.PlayerData[killerID]) {
-      this.checkPlayerData(killer, killerID);
-    }
-    if (!TitlesData.PlayerData[victimID]) {
-      this.checkPlayerData(victim, victimID);
-    }
-    this.handleStats([killerID, victimID], [killer, victim]);
-    return;
+      killer = hitinfo.Initiator;
+    if (killer === null || victim === null || !killer.ToPlayer() || !victim.ToPlayer()) return false;
+    this.handleStats(killer, victim);
   },
 
   /*-----------------------------------------------------------------
@@ -718,6 +717,7 @@ var RanksAndTitles = {
           - @ids - array of ids to be sent to the function
    ------------------------------------------------------------------*/
   buildDeathMsg: function(users, ids) {
+    if (this.Config.Settings.deathMsgs) {
       var slayerTitle = TitlesData.PlayerData[ids[0]].Title;
       var slainTitle = TitlesData.PlayerData[ids[1]].Title;
       for (var i = 0; i < this.Config.main.length; i++) {
@@ -729,12 +729,44 @@ var RanksAndTitles = {
         }
       }
       rust.BroadcastChat(prefix, this.buildString(msgs.slain, [users[0], slayerColor, slayerTitle, users[1], slainColor, slainTitle]));
+    }
     return false;
   },
-
   /*-----------------------------------------------------------------
                      Command Handling
   ------------------------------------------------------------------*/
+
+  karmaHandling: function(player, cmd, args) {
+    var perms = this.Config.Permissions;
+    var thisPerm = args[1];
+    var getPlayer = "",
+      karmaAmt = 0;
+    if (args.length > 1) {
+      getPlayer = this.findPlayerByName(args[3]);
+      karmaAmt = Number(args[2]);
+    }
+    switch (args[1]) {
+      case "add":
+        TitlesData.PlayerData[getPlayer[1]].Karma += karmaAmt;
+        rust.SendChatMessage(player, prefix, msgs.addKarma, "0");
+        break;
+      case "set":
+        TitlesData.PlayerData[getPlayer[1]].Karma = karmaAmt;
+        rust.SendChatMessage(player, prefix, msgs.setKarma, "0");
+        break;
+      case "rem":
+        TitlesData.PlayerData[getPlayer[1]].Karma -= karmaAmt;
+        rust.SendChatMessage(player, prefix, msgs.removeKarma, "0");
+        break;
+      default:
+        getPlayer = this.findPlayer(args[1]);
+        rust.SendChatMessage(player, prefix, getPlayer[0].displayName + msgs.plyrKarma + TitlesData.PlayerData[getPlayer[1]].Karma, "0");
+        break;
+    }
+    this.saveData();
+    this.checkPlayerData(getPlayer[0], getPlayer[1]);
+  },
+
   /*-----------------------------------------------------------------
           wipePlayer
           -- Handles wipe of player or all
@@ -751,9 +783,9 @@ var RanksAndTitles = {
         TitlesData.PlayerData[target[1]].Kills = 0;
         TitlesData.PlayerData[target[1]].Deaths = 0;
         TitlesData.PlayerData[target[1]].KDR = 0;
-        if (karmaOn) TitlesData.PlayerData[target[1]].Karma = 0;
+        if (this.Config.Settings.karma) TitlesData.PlayerData[target[1]].Karma = 0;
         rust.SendChatMessage(player, prefix, msgs.plyrWiped, "0");
-        this.handleStats([target[1]], [target[0]]);
+        this.setRankTitle(target[1], target[0]);
       } else if (!target[1].length) {
         rust.SendChatMessage(player, prefix, msgs.NoPlyrs, "0");
         return false;
@@ -766,12 +798,11 @@ var RanksAndTitles = {
         TitlesData.PlayerData[target].Kills = 0;
         TitlesData.PlayerData[target].Deaths = 0;
         TitlesData.PlayerData[target].KDR = 0;
-        if (karmaOn) TitlesData.PlayerData[target].Karma = 0;
-        this.handleStats([rust.UserIDFromPlayer(target)], [target]);
+        if (this.Config.Settings.karma) TitlesData.PlayerData[target].Karma = 0;
+        this.setRankTitle(target, rust.UserIDFromPlayer(target));
       }
     }
     this.saveData();
-    return;
   },
 
   //Function to create new ranks or prefixes in game with a heavy command
@@ -800,7 +831,6 @@ var RanksAndTitles = {
       rust.SendChatMessage(player, prefix, msgs.rankCreated.replace("{rank}", temp.title), "0");
     }
     this.SaveConfig();
-    return;
   },
 
   //Deletes exsisting ranks by splicing them out of the config
@@ -823,19 +853,23 @@ var RanksAndTitles = {
   //to set his new ranks title instead. This is so if a player with a custom title wishes to
   //go back to the ranks system, he can do so upon asking an admin.
   removeTitle: function(player, cmd, args) {
-    var getPlayer = this.findPlayerByName(args[1]);
-    for (var i = 0; i < this.Config.prefixTitles.length; i++) {
-      if (this.Config.prefixTitles[i] === TitlesData.PlayerData[getPlayer[1]].Prefix) {
-        TitlesData.PlayerData[getPlayer[1]].Prefix = "";
-        permission.RemoveUserGroup(getPlayer[1], this.Config.prefixTitles[i].permission);
+    try {
+      var getPlayer = this.findPlayerByName(args[1]);
+      for (var i = 0; i < this.Config.prefixTitles.length; i++) {
+        if (this.Config.prefixTitles[i] === TitlesData.PlayerData[getPlayer[1]].Prefix) {
+          TitlesData.PlayerData[getPlayer[1]].Prefix = "";
+          permission.RemoveUserGroup(getPlayer[1], this.Config.prefixTitles[i].permission);
+        }
       }
+      this.saveData();
+      this.setRankTitle(getPlayer[1], getPlayer[0]);
+      rust.SendChatMessage(player, prefix, msgs.reset + " " + getPlayer[0].displayName, "0");
+    } catch (e) {
+      print(e.message.toString());
     }
-    this.saveData();
-    this.handleStats([getPlayer[1]], [getPlayer[0]]);
-    rust.SendChatMessage(player, prefix, msgs.reset + " " + getPlayer[0].displayName, "0");
   },
 
-  givePrefix: function(player, cmd, args) {
+  giveTitle: function(player, cmd, args) {
 
     var getPlayer = this.findPlayerByName(args[1]);
     var getPlayerData = TitlesData.PlayerData,
@@ -848,6 +882,7 @@ var RanksAndTitles = {
     if (args[2].length) {
       for (i; i < j; i++) {
         if (args[2].toLowerCase() === this.Config.prefixTitles[i].title.toLowerCase()) {
+          print(getPlayer[1]);
           TitlesData.PlayerData[getPlayer[1]].Prefix = this.Config.prefixTitles[i].title;
           permission.AddUserGroup(getPlayer[1], this.Config.prefixTitles[i].permission);
           rust.SendChatMessage(player, prefix, msgs.setSuccs, "0");
@@ -860,13 +895,25 @@ var RanksAndTitles = {
     this.saveData();
   },
 
+  noAdmin: function(player, cmd, args) {
+    var noAdmin = this.Config.Settings.noAdmin;
+    if (noAdmin) {
+      this.Config.Settings.noAdmin = false;
+      rust.SendChatMessage(player, prefix, msgs.adminsOn, "0");
+    } else {
+      this.Config.Settings.noAdmin = true;
+      rust.SendChatMessage(player, prefix, msgs.adminsOff, "0");
+    }
+    this.SaveConfig();
+  },
+
   rtHelp: function(player, cmd, args) {
     rust.SendChatMessage(player, null, "--------------RanksAndTitles Commands------------", "0");
     var authLvl = player.net.connection.authLevel;
     for (var i = 0; i < this.Config.Help.length; i++) {
       player.ChatMessage(this.Config.Help[i]);
     }
-    if (this.hasPermission(player, "isStaff")) {
+    if (authLvl >= 2) {
       rust.SendChatMessage(player, null, "<color=orange>--------------Admin Commands------------</color>", "0");
       for (var j = 0; j < this.Config.AdminHelp.length; j++) {
         player.ChatMessage(this.Config.AdminHelp[j]);
@@ -906,7 +953,6 @@ var RanksAndTitles = {
         colorArr.push(prefixColor);
       }
     }
-
     if (!chatHandler) {
       return colorArr;
     } else {
@@ -926,8 +972,9 @@ var RanksAndTitles = {
     var player = arg.connection.player,
       steamID = rust.UserIDFromPlayer(player);
 
-    if (!TitlesData.PlayerData[steamID]) {
+    if (TitlesData.PlayerData[steamID] === undefined) {
       this.checkPlayerData(player, steamID);
+      print("Building Player Data");
     }
     var titleColor = "",
       usePrefix = "",

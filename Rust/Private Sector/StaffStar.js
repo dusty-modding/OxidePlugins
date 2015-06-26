@@ -9,14 +9,7 @@ var StaffStar = {
   },
 
   OnPlayerInit: function(player) {
-    var steamID = rust.UserIDFromPlayer(player);
-    for (var i = 0; i < this.Config.Permissions.length; i++) {
-      if (this.hasPermission(player, this.Config.Permissions[i])) {
-        this.handleData(steamID);
-        StaffData.PlayerData[steamID].perm = this.Config.Permissions[i];
-      }
-    }
-    this.saveData();
+    this.setSymb(player);
   },
 
   OnServerInitialized: function() {
@@ -35,6 +28,17 @@ var StaffStar = {
         "color": "#FFFFFF"
       }
     };
+  },
+
+  setSymb: function(player) {
+    var steamID = rust.UserIDFromPlayer(player);
+    for (var i = 0; i < this.Config.Permissions.length; i++) {
+      if (this.hasPermission(player, this.Config.Permissions[i])) {
+        this.handleData(steamID);
+        StaffData[steamID].perm = this.Config.Permissions[i];
+      }
+    }
+    this.saveData();
   },
   //----------------------------------------
   //          Data Handling
