@@ -7,6 +7,7 @@ var StaffStar = {
     this.getData();
     global = importNamespace("");
   },
+
   OnPlayerInit: function(player) {
     var steamID = rust.UserIDFromPlayer(player);
     for (var i = 0; i < this.Config.Permissions.length; i++) {
@@ -21,6 +22,7 @@ var StaffStar = {
   OnServerInitialized: function() {
     print("Booting up Staff Star");
   },
+
   LoadDefaultConfig: function() {
     this.Config.Permissions = ["isStaff", "isdonator"];
     this.Config.values = {
@@ -82,8 +84,8 @@ var StaffStar = {
       msg = arg.GetString(0, "text"),
       formattedMsg = msg;
 
-    if (StaffData.PlayerData[steamID] && StaffData.PlayerData[steamID].perm) {
-      formattedMsg = this.Config.values[StaffData.PlayerData[steamID].perm].symbol + '<color=' + this.Config.values[StaffData.PlayerData[steamID].perm].color + '>' + player.displayName + "</color>: " + msg;
+    if (StaffData[steamID] && StaffData[steamID].perm) {
+      formattedMsg = this.Config.values[StaffData[steamID].perm].symbol + '<color=' + this.Config.values[StaffData[steamID].perm].color + '>' + player.displayName + "</color>: " + msg;
       global.ConsoleSystem.Broadcast("chat.add", steamID, formattedMsg);
       print(player.displayName + ": " + msg);
       return false;
