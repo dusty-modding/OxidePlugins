@@ -1,7 +1,4 @@
-function Punishment(title, author, version, args) {
-  this.Title = title;
-  this.Author = author;
-  this.Version = version;
+function PunishmentSystem(args) {
   this.moduleData = args[0];
   this.moduleConfig = args[1];
   this.moduleConfig.punishments = this.moduleConfig.punishments || {
@@ -71,12 +68,15 @@ Punishment.prototype = {
     var dh = API.deathHandler({victim: entity, killer: hitinfo.Initiator});
     if (dh) this.punishHandler(dh.killer, dh.victimID, dh.killerID);
     return false;
-    // this.moduleData = data.GetData("RanksandTitles");
-    // var killer = hitinfo.Initiator,
-    //   victim = entity;
-    // if (killer === null || victim === null || !killer.ToPlayer() || !victim.ToPlayer()) return false;
-    // var killerID = rust.UserIDFromPlayer(killer),
-    //   victimID = rust.UserIDFromPlayer(victim);
-    // this.punishHandler(killer, victimID, killerID);
+  }
+};
+
+var Punishment = {
+  Title: "Punishment Module",
+  Author: "KillParadise",
+  Version: V(1,0,0),
+  Init: function() {
+    print("Punishment System Installed. Please Reload ParaAPI");
+
   }
 };

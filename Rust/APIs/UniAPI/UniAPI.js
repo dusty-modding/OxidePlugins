@@ -159,10 +159,10 @@ var UniAPI = {
         Title: "Universal API",
         Author: "KillParadise",
         Version: V(1, 0, 0),
-        API: new API();
-        global = importNamespace(""),
-        this.msgs = UniAPI.Config.Messages,
-        this.prefix = UniAPI.Config.Prefix,
+        API = new API();
+        global = importNamespace("");
+        this.msgs = UniAPI.Config.Messages;
+        this.prefix = UniAPI.Config.Prefix;
         depositing = {};
         Init: function() {
 
