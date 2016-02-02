@@ -76,7 +76,7 @@ API.prototype = {
             ChatNameColor: "#6699FF",
             StaffChatNameColor: "#009900",
             AllowColor: true
-        }
+        };
         this.Config.Modules = this.Config.Modules || {};
         this.Config.Permissions = this.Config.Permissions || {
             "staff": "isStaff"
@@ -376,7 +376,7 @@ API.prototype = {
             victim: data.victim,
             killerID: rust.UserIDFromPlayer(data.killer),
             victimID: rust.UserIDFromPlayer(data.victim)
-        }
+        };
         return cbObj;
     }
 
@@ -396,7 +396,7 @@ function chatHandler(data) {
     var newMsg = "";
     newMsg = this.init(data);
     return newMsg;
-};
+}
 
 chatHandler.prototype = {
 
@@ -422,9 +422,9 @@ chatHandler.prototype = {
             - @data - Object - A data object containing chat data
      ------------------------------------------------------------------*/
     buildMsg: function(data) {
-        var formattedMsg = ""
+        var formattedMsg = "";
         var msg = data.msg;
-        var useColor = ""
+        var useColor = "";
         if (this.Config.Settings.AllowColor && permission.UserHasPermission(data.steamID, "isStaff")) {
             useColor = "<color=" + this.Config.Settings.StaffChatNameColor + ">";
         } else {
