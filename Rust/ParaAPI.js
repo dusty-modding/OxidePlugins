@@ -4,21 +4,25 @@
 		this.Version = version;
 		this.Description = 'Handles All communication between my plugins, handles death, economy, and global statics logic, also comes stacked with logic methods/helpers';
 	}
-	//@TODO: Try to make this system more open by removing rust based objects. Find out if there is a more dynamic approach to this.
-	//@FIXME: USER ID uses rust, is there a better approach than to use rust? Try to make this
-	//work accross all platforms. @IDEA: Perhaps have these items rake in Steam IDs instead of finding them.
+
 	ParaAPI.prototype = {
+
+		/////////////////////
+		//START OXIDE HOOKS//
+		///////////////////
 		Init: function() {
 			global = importNamespace("");
+			print(this.Plugin);
+			permission.RegisterPermission('paraapi.canSeeGlobalStats', this.Plugin);
+			command.AddChatCommand('globals', this.Plugin, 'showGlobals');
 		},
 
 		OnServerInitialized: function() {
 			print('Welcome to ParaAPI!');
 			print('Prepping all Paradise systems for launch!');
 			this.getData();
-			var opts = this.Config.Settings;
-			if (opts.useParaAPIEconomy) this.economyHandler();
-			if (opts.useParaAPIGlobalStats) this.globalStatsHandler();
+			if(this.Config.Settings.useParaAPIEconomy) this.economyHandler(); print('ParaAPI Economy Handler Enabled.');
+			if(this.Config.Settings.useParaAPIGlobalStats) this.globalStatsHandler(); print('ParaAPI Global Stats Handler Enabled.');
 
 		},
 
@@ -28,11 +32,22 @@
 				useParaAPIEconomy: true, //Required if you want to use in game currency
 				useParaAPIGlobalStats: true //Keeps track of your servers global stats like kills, deaths, suicides, etc.
 			};
+			this.Config.Messages = this.Config.Messages || {
+				globalstats: [
+					'<color=orange>Total Connections:</color> {connections}',
+					'<color=orange>Total Server Kills:</color> {kills}',
+					'<color=orange>Total Server Deaths:</color> {deaths}',
+					'<color=orange>Total Server Loot:</color> {loot}',
+					'<color=orange>Total Server Items Crafted:</color> {crafted}',
+					'<color=orange>Total Server Research Completed:</color> {research}',
+					'<color=orange>Total Server Airdrops:</color> {airdrops}'],
+				noPerm: 'You do not have permission to use this command'
+			};
 			this.Config.Plugins = this.Config.Plugins || {};
 		},
 
 		/*-----------------------------------------------------------------
-		OnPlayerInit
+		Oxide Hooks
 		-- Handles player login and initializes data
 		- @player - Base Player Object
 		------------------------------------------------------------------*/
@@ -40,6 +55,46 @@
 			var steamID = rust.UserIDFromPlayer(player);
 			this.buildPlayerData(player, steamID);
 		},
+
+		OnPlayerConnected: function(packet) {
+			APIData.GlobalStats.connections += 1;
+			this.saveData();
+		},
+
+		OnPlayerRespawned: function(player) {
+			APIData.GlobalStats.kills += 1;
+			APIData.GlobalStats.deaths += 1;
+			this.saveData();
+		},
+
+		OnPlayerLoot: function(inventory, target) {
+			APIData.GlobalStats.loot += 1;
+			this.saveData();
+		},
+
+		OnAirdrop: function(plane, location) {
+			APIData.GlobalStats.airdrops += 1;
+			this.saveData();
+		},
+
+		OnItemCraftFinished: function(task, item) {
+			APIData.GlobalStats.crafts += 1;
+			this.saveData();
+		},
+
+		OnItemResearchEnd: function(table, chance) {
+			APIData.GlobalStats.research += 1;
+			this.saveData();
+		},
+
+		/////////////////////
+		//END OXIDE HOOKS //
+		///////////////////
+
+		////////////////////////
+		//START API METHODS //
+		////////////////////////
+
 
 		/*-----------------------------------------------------------------
 		getData
@@ -134,7 +189,9 @@
 		- @useJSON - Boolean - if you want a JSON flattened object back
 		------------------------------------------------------------------*/
 		getDataSet: function(data, value, useJSON) {
-			var temp = {set: []};
+			var temp = {
+				set: []
+			};
 			for(var i = 0, len = data.length; i < len; i++) {
 				temp.set.push(data[i][value]);
 			}
@@ -144,7 +201,6 @@
 		/*-----------------------------------------------------------------
 		getClosest
 		-- Locates closes rank to current players karma
-		- @closestTo - the current karma of the player
 		- @data - object - an object to search
 		- @value - Number/String - value to search through the object for
 		- @returns a number value
@@ -245,7 +301,26 @@
 		//////////////////
 
 		globalStatsHandler: function(useJSON) {
+			APIData.GlobalStats = APIData.GlobalStats || {
+				connections: 0,
+				kills: 0,
+				deaths: 0,
+				loot: 0,
+				crafts: 0,
+				research: 0,
+				airdrops: 0
+			};
+		},
 
+		showGlobals: function(player, cmd, arg) {
+			var steamID = rust.UserIDFromPlayer(player);
+			if(permission.UserHasPermission(steamID, 'paraapi.canSeeGlobalStats')) {
+				rust.SendChatMessage(player, this.Config.Prefix, this.buildString(this.Config.Messages.globalstats, [APIData.GlobalStats.connections, APIData.GlobalStats.kills, APIData.GlobalStats.deaths,
+          APIData.GlobalStats.loot, APIData.GlobalStats.crafts, APIData.GlobalStats.research, APIData.GlobalStats.airdrops]), '0');
+			} else {
+				rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.noPerm, '0');
+				return false;
+			}
 		},
 
 		///////////////////
@@ -275,6 +350,10 @@
 			};
 			return(useJSON) ? JSON.stringify(cbObj) : cbObj;
 		}
+
+		////////////////////////
+		//END API METHODS //
+		////////////////////////
 
 	};
 

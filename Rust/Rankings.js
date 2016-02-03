@@ -6,8 +6,8 @@ var Rankings = {
 
 	init: function() {
 		command.AddChatCommand('pr', this.Plugin, 'handleCmds');
-		permission.RegisterPermission('canResetRank', this);
-		permission.RegisterPermission('canSetRank', this);
+		permission.RegisterPermission('rankings.canResetRank', this.Plugin);
+		permission.RegisterPermission('rankings.canSetRank', this.Plugin);
 	},
 
 	OnServerInitialized: function() {
@@ -68,18 +68,18 @@ var Rankings = {
 		switch(arg[0]) {
 			case 'stats':
 				player.ChatMessage(ParaAPI.buildString(this.Config.Messages.stats, [APIData.PlayerData[steamID].Rankings.kills, APIData.PlayerData[steamID].Rankings.deaths,
-          APIData.PlayerData[steamID].Rankings.suicides, TitlesData.PlayerData[steamID].Rankings.rank, TitlesData.PlayerData[steamID].Rankings.name
+          APIData.PlayerData[steamID].Rankings.suicides, APIData.PlayerData[steamID].Rankings.rank, APIData.PlayerData[steamID].Rankings.name
         ]));
 				break;
 			case 'set':
-				if(permission.UserHasPermission(steamID, 'canSetRank')) {
+				if(permission.UserHasPermission(steamID, 'rankings.canSetRank')) {
 					this.cmdSetRank(player, arg);
 				} else {
 					rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.noPerm, '0');
 				}
 				break;
 			case 'reset':
-				if(permission.UserHasPermission(steamID, 'canResetRank')) {
+				if(permission.UserHasPermission(steamID, 'rankings.canResetRank')) {
 					this.cmdResetRank(player, arg);
 				} else {
 					rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.noPerm, '0');
