@@ -1,3 +1,12 @@
+	/*
+	ParaAPI is a Cross-language based api system, each method used by this API can return a JSON based object
+	which can then be used by lua, C#, and Python. Each method can also return a JavaScript object if you are using JS as well.
+	since ParaAPI uses the prototype system, it technically will act as a class and is able to be called anywhere simply with "ParaAPI".
+	However if you're using another language you may need to do a find on the plugin to import it into your script. To then be used properly.
+
+	Please skim through the plugin below each method explains what it does, and how to use each parameter properly.
+	 */
+
 	function ParaAPI(title, author, version) {
 		this.Title = title;
 		this.Author = author;
@@ -125,6 +134,15 @@
 
 		buildAPIData: function() {
 			APIData.Economy = APIData.Economy || {};
+			APIData.GlobalStats = APIData.GlobalStats || {
+				connections: 0,
+				kills: 0,
+				deaths: 0,
+				loot: 0,
+				crafts: 0,
+				research: 0,
+				airdrops: 0
+			};
 		},
 
 		wipeData: function(key) {
@@ -156,6 +174,33 @@
 			data.SaveData('ParaAPI');
 		},
 
+		/**
+		 * Combines objects much like the jquery extend if you do merge this will use the data object values to overwrite the original object.
+		 * @method   combine
+		 * @memberOf ParaAPI
+		 * @param    {boolean}         useJSON determines if the return should be a json or javascript object
+		 * @param    {object}         origObj the original object to be copied over
+		 * @param    {object}         data    new object of data to copy into the original
+		 * @param    {boolean|object}         [merge]   pass an empty object or true if you want the objects to be merged instead of replaced
+		 * @return   {object}                 returns either a json object or regular javascript object
+		 */
+		combine: function(useJSON, origObj, data, merge) {
+			if (!merge && typeof data === 'object') {
+				for (var n in data) {
+					origObj[n] = data[n];
+				}
+				return (useJSON) ? JSON.stringify(origObj) : origObj;
+			} else {
+				merge = {};
+				for (var o in origObj) {
+					merge[o] = origObj[o];
+				}
+				for (var i in data) {
+					merge[i] = data[i];
+				}
+				return (useJSON) ? JSON.stringify(merge) : merge;
+			}
+		},
 
 		/*-----------------------------------------------------------------
 		refreshData
@@ -171,13 +216,6 @@
 			data[steamID][value] = "";
 			//this.checkPlayerData(player, steamID);
 			//Will need to write a function to handle reloading a players data
-		},
-
-		combineObj: function(a, b, useJSON) {
-			for(var key in b)
-				if(b.hasOwnProperty(key))
-					a[key] = b[key];
-			return(useJSON) ? JSON.stringify(a) : a;
 		},
 
 		/*-----------------------------------------------------------------
@@ -267,8 +305,7 @@
 		- @returns a javascript object, pass true for useJSON to get a json object back
 		------------------------------------------------------------------*/
 		findPlayerByName: function(playerName, useJSON) {
-			var found = {},
-				foundID;
+			var found = {};
 			playerName = playerName.toLowerCase();
 			var itPlayerList = global.BasePlayer.activePlayerList.GetEnumerator();
 			while(itPlayerList.MoveNext()) {
@@ -288,8 +325,7 @@
 			}
 
 			if(found.length) {
-				foundID = rust.UserIDFromPlayer(found.player);
-				found.id = foundID;
+				found.id = rust.UserIDFromPlayer(found.player);
 				return(useJSON) ? JSON.stringify(found) : found;
 			} else {
 				return false;
@@ -299,18 +335,6 @@
 		///////////////////
 		//Global Stats	//
 		//////////////////
-
-		globalStatsHandler: function(useJSON) {
-			APIData.GlobalStats = APIData.GlobalStats || {
-				connections: 0,
-				kills: 0,
-				deaths: 0,
-				loot: 0,
-				crafts: 0,
-				research: 0,
-				airdrops: 0
-			};
-		},
 
 		showGlobals: function(player, cmd, arg) {
 			var steamID = rust.UserIDFromPlayer(player);
@@ -324,7 +348,7 @@
 		},
 
 		///////////////////
-		//Economics			//
+		//Economics		//
 		//////////////////
 
 		economyHandler: function(data, useJSON) {

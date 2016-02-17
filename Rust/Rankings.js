@@ -19,10 +19,21 @@ var Rankings = {
 		} else {
 			print('Rankings: ParaAPI located, Installing.');
 			if(ParaAPI) {
-				print('Rankings: Successfully Installed into ParaAPI Instance.');
-				print('New Perms for Rankings: canResetRank, canSetRank');
-				this.setupPlugin();
+				print('Rankings: Successfully Installed ParaAPI Instance.');
+				print('New Perms for Rankings: rankings.canResetRank, rankings.canSetRank');
 			}
+		}
+		this.setupPlugin();
+	},
+
+	OnPlayerInit: function(player) {
+		var steamID = rust.UserIDFromPlayer(player);
+		APIData.PlayerData[steamID].Rankings = APIData.PlayerData[steamID].Rankings || this.Config.StarterRank;
+	},
+
+	setupPlugin: function() {
+		for(var key in APIData.PlayerData) {
+			APIData.PlayerData[key].Rankings = APIData.PlayerData[key].Rankings || this.Config.StarterRank;
 		}
 	},
 
@@ -55,12 +66,6 @@ var Rankings = {
 			cmdSet: '<color=orange>Set new rank successfully</color>',
 			cmdReset: '<color=orange>Reset players rank successfully</color>'
 		};
-	},
-
-	setupPlugin: function() {
-		for(var key in APIData.PlayerData) {
-			APIData.PlayerData.Rankings = APIData.PlayerData.Rankings || this.Config.StarterRank;
-		}
 	},
 
 	handleCmds: function(player, cmd, arg) {
@@ -152,6 +157,8 @@ var Rankings = {
 				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.kill + p.victim.displayName, '0');
 				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.promo + this.Config.Ranks[i].name, '0');
 				APIData.PlayerData[p.killerID].Rankings.name = this.Config.Ranks[i].name;
+				if (PlayerPrefix) PlayerPrefix.updatePrefix(this.Config.Ranks[i].name, p.killerID);
+				break;
 			} else {
 				return false;
 			}
