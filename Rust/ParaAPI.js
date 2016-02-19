@@ -2,7 +2,7 @@
 	ParaAPI is a Cross-language based api system, each method used by this API can return a JSON based object
 	which can then be used by lua, C#, and Python. Each method can also return a JavaScript object if you are using JS as well.
 	since ParaAPI uses the prototype system, it technically will act as a class and is able to be called anywhere simply with "ParaAPI".
-	However if you're using another language you may need to do a find on the plugin to import it into your script. To then be used properly.
+	However if you"re using another language you may need to do a find on the plugin to import it into your script. To then be used properly.
 
 	Please skim through the plugin below each method explains what it does, and how to use each parameter properly.
 	 */
@@ -11,7 +11,7 @@
 		this.Title = title;
 		this.Author = author;
 		this.Version = version;
-		this.Description = 'Handles All communication between my plugins, handles death, economy, and global statics logic, also comes stacked with logic methods/helpers';
+		this.Description = "Handles All communication between my plugins, handles death, economy, and global statics logic, also comes stacked with logic methods/helpers";
 	}
 
 	ParaAPI.prototype = {
@@ -21,38 +21,37 @@
 		///////////////////
 		Init: function() {
 			global = importNamespace("");
-			print(this.Plugin);
-			permission.RegisterPermission('paraapi.canSeeGlobalStats', this.Plugin);
-			command.AddChatCommand('globals', this.Plugin, 'showGlobals');
+			this.buildAPIData();
 		},
 
 		OnServerInitialized: function() {
-			print('Welcome to ParaAPI!');
-			print('Prepping all Paradise systems for launch!');
+			print("Welcome to ParaAPI!");
+			print("Prepping all Paradise systems for launch!");
+			permission.RegisterPermission("paraapi.canSeeGlobalStats", this.Plugin);
+			command.AddChatCommand("globals", this.Plugin, "showGlobals");
 			this.getData();
-			if(this.Config.Settings.useParaAPIEconomy) this.economyHandler(); print('ParaAPI Economy Handler Enabled.');
-			if(this.Config.Settings.useParaAPIGlobalStats) this.globalStatsHandler(); print('ParaAPI Global Stats Handler Enabled.');
-
+			if(this.Config.Settings.useParaAPIEconomy) this.economyHandler(); print("ParaAPI Economy Handler Enabled.");
 		},
 
 		LoadDefaultConfig: function() {
-			this.Config.APIVersion = '1.0.0';
+			this.Config.APIVersion = "1.0.0";
 			this.Config.Settings = this.Config.Settings || {
 				useParaAPIEconomy: true, //Required if you want to use in game currency
 				useParaAPIGlobalStats: true //Keeps track of your servers global stats like kills, deaths, suicides, etc.
 			};
 			this.Config.Messages = this.Config.Messages || {
-				globalstats: [
-					'<color=orange>Total Connections:</color> {connections}',
-					'<color=orange>Total Server Kills:</color> {kills}',
-					'<color=orange>Total Server Deaths:</color> {deaths}',
-					'<color=orange>Total Server Loot:</color> {loot}',
-					'<color=orange>Total Server Items Crafted:</color> {crafted}',
-					'<color=orange>Total Server Research Completed:</color> {research}',
-					'<color=orange>Total Server Airdrops:</color> {airdrops}'],
-				noPerm: 'You do not have permission to use this command'
+				"globalstats": [
+					"<color=#ffa500ff><size=20>Global Stats",
+					"======================</size></color>",
+					"<color=orange>Total Connections:</color> {connections}",
+					"<color=orange>Total Server Kills:</color> {kills}",
+					"<color=orange>Total Server Deaths:</color> {deaths}",
+					"<color=orange>Total Server Loot:</color> {loot}",
+					"<color=orange>Total Server Items Crafted:</color> {crafted}",
+					"<color=orange>Total Server Research Completed:</color> {research}",
+					"<color=orange>Total Server Airdrops:</color> {airdrops}"],
+				"noPerm": "You do not have permission to use this command"
 			};
-			this.Config.Plugins = this.Config.Plugins || {};
 		},
 
 		/*-----------------------------------------------------------------
@@ -171,7 +170,7 @@
 		-- and setting proper values on login
 		------------------------------------------------------------------*/
 		saveData: function() {
-			data.SaveData('ParaAPI');
+			data.SaveData("ParaAPI");
 		},
 
 		/**
@@ -185,7 +184,7 @@
 		 * @return   {object}                 returns either a json object or regular javascript object
 		 */
 		combine: function(useJSON, origObj, data, merge) {
-			if (!merge && typeof data === 'object') {
+			if (!merge && typeof data === "object") {
 				for (var n in data) {
 					origObj[n] = data[n];
 				}
@@ -277,12 +276,12 @@
 			}
 			if(string.constructor === Array) {
 				for(var ii = 0, len = string.length; ii < len; ii++) {
-					temp.push(string[ii].match(/{([A-Z]+)}/g));
+					temp.push(string[ii].match(/\{([^{]+)\}/g));
 					newString = string[ii].replace(temp[ii], values[ii]);
 					sb += newString + "\n";
 				}
 			} else {
-				temp.push(string.match(/{([A-Z]+)}/g));
+				temp.push(string.match(/\{([^{]+)\}/g));
 				temp = temp.toString().split(",");
 				for(i; i < temp.length; i++) {
 					regObj[temp[i]] = values[i];
@@ -314,7 +313,7 @@
 
 				if(displayName.search(playerName) > -1) {
 					print("found match " + displayName);
-					found.push(itPlayerList.Current);
+					found.player = itPlayerList.Current;
 				}
 
 				if(playerName.length === 17) {
@@ -324,7 +323,7 @@
 				}
 			}
 
-			if(found.length) {
+			if(found.player) {
 				found.id = rust.UserIDFromPlayer(found.player);
 				return(useJSON) ? JSON.stringify(found) : found;
 			} else {
@@ -338,11 +337,11 @@
 
 		showGlobals: function(player, cmd, arg) {
 			var steamID = rust.UserIDFromPlayer(player);
-			if(permission.UserHasPermission(steamID, 'paraapi.canSeeGlobalStats')) {
-				rust.SendChatMessage(player, this.Config.Prefix, this.buildString(this.Config.Messages.globalstats, [APIData.GlobalStats.connections, APIData.GlobalStats.kills, APIData.GlobalStats.deaths,
-          APIData.GlobalStats.loot, APIData.GlobalStats.crafts, APIData.GlobalStats.research, APIData.GlobalStats.airdrops]), '0');
+			if(permission.UserHasPermission(steamID, "paraapi.canSeeGlobalStats")) {
+				rust.SendChatMessage(player, null, this.buildString(this.Config.Messages.globalstats, [APIData.GlobalStats.connections, APIData.GlobalStats.kills, APIData.GlobalStats.deaths,
+          APIData.GlobalStats.loot, APIData.GlobalStats.crafts, APIData.GlobalStats.research, APIData.GlobalStats.airdrops]), "0");
 			} else {
-				rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.noPerm, '0');
+				rust.SendChatMessage(player, "ParaAPI", this.Config.Messages.noPerm, "0");
 				return false;
 			}
 		},

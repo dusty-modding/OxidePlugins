@@ -1,26 +1,23 @@
 var Rankings = {
-	Title: 'Rankings',
-	Author: 'Killparadise',
+	Title: "Rankings",
+	Author: "Killparadise",
 	Version: V(1, 0, 0),
 	Description : "Handles ranking players and kill stats",
 
-	init: function() {
-		command.AddChatCommand('pr', this.Plugin, 'handleCmds');
-		permission.RegisterPermission('rankings.canResetRank', this.Plugin);
-		permission.RegisterPermission('rankings.canSetRank', this.Plugin);
-	},
-
 	OnServerInitialized: function() {
-		print('Rankings: Locating ParaAPI...');
+		command.AddChatCommand("ranks", this.Plugin, "handleCmds");
+		permission.RegisterPermission("rankings.canResetRank", this.Plugin);
+		permission.RegisterPermission("rankings.canSetRank", this.Plugin);
+		print("Rankings: Locating ParaAPI...");
 		if(!ParaAPI) {
-			print('Rankings: CRITICAL ERROR: ParaAPI NOT FOUND, now exiting...');
+			print("Rankings: CRITICAL ERROR: ParaAPI NOT FOUND, now exiting...");
 			Unload();
 			return false;
 		} else {
-			print('Rankings: ParaAPI located, Installing.');
+			print("Rankings: ParaAPI located, Installing.");
 			if(ParaAPI) {
-				print('Rankings: Successfully Installed ParaAPI Instance.');
-				print('New Perms for Rankings: rankings.canResetRank, rankings.canSetRank');
+				print("Rankings: Successfully Installed ParaAPI Instance.");
+				print("New Perms for Rankings: rankings.canResetRank, rankings.canSetRank");
 			}
 		}
 		this.setupPlugin();
@@ -38,74 +35,79 @@ var Rankings = {
 	},
 
 	LoadDefaultConfig: function() {
-		this.Config.RankingsVersion = '1.0.0';
-		this.Config.Prefix = 'Rankings';
+		this.Config.RankingsVersion = "1.0.0";
+		this.Config.Prefix = "Rankings";
 		this.Config.Settings = this.Config.Settings || {};
 		this.Config.StarterRank = this.Config.StarterRank || {
-			name: 'Newbie', //I Recommend only chaning the name of the starter rank
-			rank: 0,
-			kills: 0,
-			deaths: 0,
-			suicides: 0
+			"name": "Newbie", //I Recommend only chaning the name of the starter rank
+			"rank": 0,
+			"kills": 0,
+			"deaths": 0,
+			"suicides": 0
 		}; //The Rank all new players will use
 		this.Config.Ranks = this.Config.Ranks || [
 			{
-				name: 'Movin Up',
+				name: "Movin Up",
 				rank: 1,
 				kills: 1
 			}
 		];
 		this.Config.Messages = this.Config.Messages || {
-			promo: 'You\'ve been promoted to ',
-			kill: 'You\'ve Slain ',
-			stats: ['<color=orange>Kills:</color> {kills}', '<color=orange>Deaths:</color> {deaths}', '<color=orange>suicides:</color> {suicides}', '<color=orange>Rank:</color> {rank}', '<color=orange>Title:</color> {name}'],
-			noPerm: 'You do not have Permission to use that command.',
-			badSyn: 'Incorrect Syntax used, please try again',
-			setRank: ' has set your rank to ',
-			resetRank: 'Your rank has been reset!',
-			cmdSet: '<color=orange>Set new rank successfully</color>',
-			cmdReset: '<color=orange>Reset players rank successfully</color>'
+			"promo": "You\"ve been promoted to ",
+			"kill": "You\"ve Slain ",
+			"stats": ["<color=orange>Kills:</color> {kills}", "<color=orange>Deaths:</color> {deaths}", "<color=orange>Suicides:</color> {suicides}", "<color=orange>Rank:</color> {rank}", "<color=orange>Title:</color> {name}"],
+			"noPerm": "You do not have Permission to use that command.",
+			"badSyn": "Incorrect Syntax used, please try again",
+			"setRank": " has set your rank to ",
+			"resetRank": "Your rank has been reset!",
+			"cmdSet": "<color=orange>Set new rank successfully</color>",
+			"cmdReset": "<color=orange>Reset players rank successfully</color>"
 		};
 	},
 
 	handleCmds: function(player, cmd, arg) {
 		var steamID = rust.UserIDFromPlayer(player);
 		switch(arg[0]) {
-			case 'stats':
+			case "stats":
 				player.ChatMessage(ParaAPI.buildString(this.Config.Messages.stats, [APIData.PlayerData[steamID].Rankings.kills, APIData.PlayerData[steamID].Rankings.deaths,
           APIData.PlayerData[steamID].Rankings.suicides, APIData.PlayerData[steamID].Rankings.rank, APIData.PlayerData[steamID].Rankings.name
         ]));
 				break;
-			case 'set':
-				if(permission.UserHasPermission(steamID, 'rankings.canSetRank')) {
+			case "set":
+				if(permission.UserHasPermission(steamID, "rankings.canSetRank")) {
 					this.cmdSetRank(player, arg);
 				} else {
-					rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.noPerm, '0');
+					rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.noPerm, "0");
 				}
 				break;
-			case 'reset':
-				if(permission.UserHasPermission(steamID, 'rankings.canResetRank')) {
+			case "reset":
+				if(permission.UserHasPermission(steamID, "rankings.canResetRank")) {
 					this.cmdResetRank(player, arg);
 				} else {
-					rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.noPerm, '0');
+					rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.noPerm, "0");
 				}
 				break;
 			default:
-				rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.badSyn, '0');
+				rust.SendChatMessage(player, this.Config.Prefix, this.Config.Messages.badSyn, "0");
 				break;
 		}
 		return false;
 	},
 
 	cmdSetRank: function(p, arg) {
+		if (!arg[1] || !arg[2]) {
+			rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.badSyn, "0");
+			return false;
+		}
 		var foundPlayer = ParaAPI.findPlayerByName(arg[1]),
 			newRank = {};
 
 		for(var i = 0; i < this.Config.Ranks.length; i++) {
 			if(Number(arg[2]) === this.Config.Ranks[i].rank || arg[2] === this.Config.Ranks[i].name) {
-				APIData.PlayerData[foundPlayer.id].Rankings = ParaAPI.combineObj(APIData.PlayerData[foundPlayer.id].Rankings, this.Config.Ranks[i]);
-				rust.SendChatMessage(foundPlayer.player, this.Config.Prefix, p.displayName + this.Config.Messages.setRank + arg[2], '0');
-				rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.cmdSet, '0');
+				APIData.PlayerData[foundPlayer.id].Rankings.rank = this.Config.Ranks[i].rank;
+				APIData.PlayerData[foundPlayer.id].Rankings.name = this.Config.Ranks[i].name;
+				rust.SendChatMessage(foundPlayer.player, this.Config.Prefix, p.displayName + this.Config.Messages.setRank + this.Config.Ranks[i].name, "0");
+				rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.cmdSet, "0");
 				break;
 			}
 		}
@@ -114,11 +116,15 @@ var Rankings = {
 	},
 
 	cmdResetRank: function(p, arg) {
+		if(!arg[1]) {
+			rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.badSyn, "0");
+			return false;
+		}
 		var foundPlayer = ParaAPI.findPlayerByName(arg[1]),
 			newRank = {};
 		APIData.PlayerData[foundPlayer.id].Rankings = this.Config.StarterRank;
-		rust.SendChatMessage(foundPlayer.player, this.Config.Prefix, this.Config.Messages.resetRank, '0');
-		rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.cmdSet, '0');
+		rust.SendChatMessage(foundPlayer.player, this.Config.Prefix, this.Config.Messages.resetRank, "0");
+		rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.cmdReset, "0");
 		ParaAPI.saveData();
 		return false;
 	},
@@ -153,9 +159,9 @@ var Rankings = {
 			if(APIData.PlayerData[p.killerID].Rankings.kills === this.Config.Ranks[i].kills &&
 				APIData.PlayerData[p.killerID].Rankings.name !== this.Config.Ranks[i].name) {
 
-				print(this.Config.Prefix + ' ' + this.Config.Messages.kill);
-				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.kill + p.victim.displayName, '0');
-				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.promo + this.Config.Ranks[i].name, '0');
+				print(this.Config.Prefix + " " + this.Config.Messages.kill);
+				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.kill + p.victim.displayName, "0");
+				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.promo + this.Config.Ranks[i].name, "0");
 				APIData.PlayerData[p.killerID].Rankings.name = this.Config.Ranks[i].name;
 				if (PlayerPrefix) PlayerPrefix.updatePrefix(this.Config.Ranks[i].name, p.killerID);
 				break;
