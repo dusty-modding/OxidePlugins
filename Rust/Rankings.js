@@ -11,7 +11,6 @@ var Rankings = {
 		print("Rankings: Locating ParaAPI...");
 		if(!ParaAPI) {
 			print("Rankings: CRITICAL ERROR: ParaAPI NOT FOUND, now exiting...");
-			Unload();
 			return false;
 		} else {
 			print("Rankings: ParaAPI located, Installing.");
@@ -26,6 +25,7 @@ var Rankings = {
 	OnPlayerInit: function(player) {
 		var steamID = rust.UserIDFromPlayer(player);
 		APIData.PlayerData[steamID].Rankings = APIData.PlayerData[steamID].Rankings || this.Config.StarterRank;
+		if (this.Config.Settings.useGUI) ParaUIHandler.buildUI(player, this.Config.GUI, APIData.PlayerData[steamID].Rankings);
 	},
 
 	setupPlugin: function() {
@@ -37,7 +37,9 @@ var Rankings = {
 	LoadDefaultConfig: function() {
 		this.Config.RankingsVersion = "1.0.0";
 		this.Config.Prefix = "Rankings";
-		this.Config.Settings = this.Config.Settings || {};
+		this.Config.Settings = this.Config.Settings || {
+			"useGUI": true
+		};
 		this.Config.StarterRank = this.Config.StarterRank || {
 			"name": "Newbie", //I Recommend only chaning the name of the starter rank
 			"rank": 0,
@@ -52,9 +54,20 @@ var Rankings = {
 				kills: 1
 			}
 		];
+		this.Config.GUI = {
+			"color": "0.1 0.1 0.1 0.75",
+			"anchorMin": "0.024 0.04",
+			"anchorMax": "0.175 0.08",
+			"label": "Rankings",
+			"data": ["kills, deaths, rank, name"],
+			"labelFontSize": 12,
+			"labelColor": "1.0 1.0 1.0 1.0",
+			"dataFontSize": 12,
+			"dataColor": "1.0 1.0 1.0 1.0"
+		};
 		this.Config.Messages = this.Config.Messages || {
-			"promo": "You\"ve been promoted to ",
-			"kill": "You\"ve Slain ",
+			"promo": "You\'ve been promoted to <color=green>",
+			"kill": "You\'ve Slain <color=red>",
 			"stats": ["<color=orange>Kills:</color> {kills}", "<color=orange>Deaths:</color> {deaths}", "<color=orange>Suicides:</color> {suicides}", "<color=orange>Rank:</color> {rank}", "<color=orange>Title:</color> {name}"],
 			"noPerm": "You do not have Permission to use that command.",
 			"badSyn": "Incorrect Syntax used, please try again",
@@ -95,10 +108,11 @@ var Rankings = {
 	},
 
 	cmdSetRank: function(p, arg) {
-		if (!arg[1] || !arg[2]) {
+		if (!arg[1]) {
 			rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.badSyn, "0");
 			return false;
 		}
+
 		var foundPlayer = ParaAPI.findPlayerByName(arg[1]),
 			newRank = {};
 
@@ -116,12 +130,19 @@ var Rankings = {
 	},
 
 	cmdResetRank: function(p, arg) {
-		if(!arg[1]) {
+		var foundPlayer = {}, newRank = {};
+		if (!arg[0]) {
 			rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.badSyn, "0");
 			return false;
 		}
-		var foundPlayer = ParaAPI.findPlayerByName(arg[1]),
-			newRank = {};
+		if (!arg[1]) {
+			foundPlayer = {
+				player: p,
+				id: rust.UserIDFromPlayer(p)
+			};
+		} else {
+			foundPlayer = ParaAPI.findPlayerByName(arg[1]);
+		}
 		APIData.PlayerData[foundPlayer.id].Rankings = this.Config.StarterRank;
 		rust.SendChatMessage(foundPlayer.player, this.Config.Prefix, this.Config.Messages.resetRank, "0");
 		rust.SendChatMessage(p, this.Config.Prefix, this.Config.Messages.cmdReset, "0");
@@ -143,26 +164,28 @@ var Rankings = {
 	registerKill: function(d) {
 		var suicide = (d.killer.displayName === d.victim.displayName);
 		if(!suicide) {
-			APIData.PlayerData[d.killerID].Rankings.Kills += 1;
-			APIData.PlayerData[d.victimID].Rankings.Deaths += 1;
+			APIData.PlayerData[d.killerID].Rankings.kills += 1;
+			APIData.PlayerData[d.victimID].Rankings.deaths += 1;
 		} else {
 			APIData.PlayerData[d.killerID].Rankings.suicides += 1;
 		}
 		ParaAPI.saveData();
+		if(ParaUIHandler) ParaUIHandler.updateUI(APIData.PlayerData[d.victimID].Rankings, d.victim, 'Rankings');
 		return this.checkRank(d);
 	},
 
 	checkRank: function(p) {
 		var i = 0,
 			len = this.Config.Ranks.length;
+		if(ParaUIHandler) ParaUIHandler.updateUI(APIData.PlayerData[p.killerID].Rankings, p.killer, 'Rankings');
 		for(i; i < len; i++) {
 			if(APIData.PlayerData[p.killerID].Rankings.kills === this.Config.Ranks[i].kills &&
 				APIData.PlayerData[p.killerID].Rankings.name !== this.Config.Ranks[i].name) {
 
-				print(this.Config.Prefix + " " + this.Config.Messages.kill);
-				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.kill + p.victim.displayName, "0");
-				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.promo + this.Config.Ranks[i].name, "0");
+				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.kill + p.victim.displayName + '</color>', "0");
+				rust.SendChatMessage(p.killer, this.Config.Prefix, this.Config.Messages.promo + this.Config.Ranks[i].name + '</color>', "0");
 				APIData.PlayerData[p.killerID].Rankings.name = this.Config.Ranks[i].name;
+				APIData.PlayerData[p.killerID].Rankings.rank = this.Config.Ranks[i].rank;
 				if (PlayerPrefix) PlayerPrefix.updatePrefix(this.Config.Ranks[i].name, p.killerID);
 				break;
 			} else {
@@ -171,5 +194,4 @@ var Rankings = {
 		}
 		ParaAPI.saveData();
 	}
-
 };

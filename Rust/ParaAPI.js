@@ -21,6 +21,7 @@
 		///////////////////
 		Init: function() {
 			global = importNamespace("");
+			this.getData();
 			this.buildAPIData();
 		},
 
@@ -29,7 +30,6 @@
 			print("Prepping all Paradise systems for launch!");
 			permission.RegisterPermission("paraapi.canSeeGlobalStats", this.Plugin);
 			command.AddChatCommand("globals", this.Plugin, "showGlobals");
-			this.getData();
 			if(this.Config.Settings.useParaAPIEconomy) this.economyHandler(); print("ParaAPI Economy Handler Enabled.");
 		},
 
@@ -75,7 +75,7 @@
 			this.saveData();
 		},
 
-		OnPlayerLoot: function(inventory, target) {
+		OnPlayerLoot: function(inventory, item) {
 			APIData.GlobalStats.loot += 1;
 			this.saveData();
 		},
@@ -103,6 +103,13 @@
 		//START API METHODS //
 		////////////////////////
 
+		throwError: function(e) {
+
+		},
+
+		hasAccess: function() {
+
+		},
 
 		/*-----------------------------------------------------------------
 		getData
