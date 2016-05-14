@@ -304,6 +304,16 @@
 		},
 
 		/*-----------------------------------------------------------------
+		capitalizeFirstLetter
+		-- Takes a string finds the first letter and capitalizes it
+		- @string - String - the string you want capitalized
+		- @returns a corrected string
+		------------------------------------------------------------------*/
+		capitalizeFirstLetter: function(string) {
+		    return string.charAt(0).toUpperCase() + string.slice(1);
+		},
+
+		/*-----------------------------------------------------------------
 		findPlayerByName
 		-- Locates Base Player object using the users name
 		- @playerName - String - of base player name

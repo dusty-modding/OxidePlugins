@@ -25,7 +25,7 @@ var Rankings = {
 	OnPlayerInit: function(player) {
 		var steamID = rust.UserIDFromPlayer(player);
 		APIData.PlayerData[steamID].Rankings = APIData.PlayerData[steamID].Rankings || this.Config.StarterRank;
-		if (this.Config.Settings.useGUI) ParaUIHandler.buildUI(player, this.Config.GUI, APIData.PlayerData[steamID].Rankings);
+		if (this.Config.Settings.useGUI && ParaUIHandler) ParaUIHandler.buildUI(player, this.Config.GUI, APIData.PlayerData[steamID].Rankings);
 	},
 
 	setupPlugin: function() {
